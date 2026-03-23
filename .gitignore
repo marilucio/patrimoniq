@@ -7,6 +7,5 @@ coverage
 *.log
 .env
 .env.local
-pnpm-lock.yaml
 apps/api/generated
 
