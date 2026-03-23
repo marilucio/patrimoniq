@@ -1,0 +1,29 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - apps/api/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3333
+    ports:
+      - "3333:3333"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      - api
+    env_file:
+      - apps/web/.env.local
+    environment:
+      APP_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      API_URL: http://localhost:3000/api/proxy
+      NEXT_PUBLIC_API_URL: /api/proxy
+      BACKEND_API_URL: http://api:3333/api
+    ports:
+      - "3000:3000"

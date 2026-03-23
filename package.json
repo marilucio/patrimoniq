@@ -1,0 +1,25 @@
+{
+  "name": "patrimoniq",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @patrimoniq/web dev",
+    "dev:api": "pnpm --filter @patrimoniq/api start:dev",
+    "start:web": "pnpm --filter @patrimoniq/web start",
+    "start:api": "pnpm --filter @patrimoniq/api start",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "db:push": "supabase db push --linked --include-roles",
+    "db:seed": "pnpm --filter @patrimoniq/api db:seed",
+    "supabase:link": "supabase link --project-ref mykrcgdfxgoupmrajcvw",
+    "supabase:types": "supabase gen types typescript --linked --schema public",
+    "supabase:role:render": "pwsh -File scripts/render-supabase-role.ps1",
+    "beta:preview": "npx localtunnel --port 3000",
+    "beta:tunnel": "ngrok http --config ngrok.beta.yml 3000",
+    "docker:beta:up": "docker compose -f docker-compose.beta.yml up --build -d",
+    "docker:beta:down": "docker compose -f docker-compose.beta.yml down",
+    "docker:beta:stable:up": "docker compose -f docker-compose.beta.stable.yml up --build -d",
+    "docker:beta:stable:down": "docker compose -f docker-compose.beta.stable.yml down"
+  }
+}

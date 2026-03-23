@@ -1,0 +1,60 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - apps/api/.env
+    environment:
+      NODE_ENV: production
+      APP_STAGE: beta
+      PORT: 3333
+      FRONTEND_URL: https://${BETA_DOMAIN}
+      APP_PUBLIC_URL: https://${BETA_DOMAIN}
+      CORS_ORIGINS: https://${BETA_DOMAIN}
+      TRUST_PROXY: 1
+      APP_PROXY_MODE: same-origin
+      COOKIE_SECURE: "true"
+      COOKIE_SAME_SITE: lax
+      COOKIE_DOMAIN: ""
+    expose:
+      - "3333"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    env_file:
+      - apps/web/.env.local
+    environment:
+      APP_URL: https://${BETA_DOMAIN}
+      NEXT_PUBLIC_APP_URL: https://${BETA_DOMAIN}
+      API_URL: https://${BETA_DOMAIN}/api/proxy
+      NEXT_PUBLIC_API_URL: /api/proxy
+      BACKEND_API_URL: http://api:3333/api
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      BETA_DOMAIN: ${BETA_DOMAIN}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+    volumes:
+      - ./infra/beta/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

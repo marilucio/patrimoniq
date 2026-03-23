@@ -1,0 +1,129 @@
+import type { NextRequest } from "next/server";
+
+export const runtime = "nodejs";
+
+function readBackendApiUrl() {
+  return (process.env.BACKEND_API_URL ?? "http://localhost:3333/api").replace(/\/$/, "");
+}
+
+function readForwardHeaders(request: NextRequest) {
+  const headers = new Headers();
+
+  request.headers.forEach((value, key) => {
+    const normalized = key.toLowerCase();
+
+    if (["host", "connection", "content-length"].includes(normalized)) {
+      return;
+    }
+
+    headers.set(key, value);
+  });
+
+  const forwardedFor = request.headers.get("x-forwarded-for");
+
+  if (!forwardedFor) {
+    headers.set("x-forwarded-for", "127.0.0.1");
+  }
+
+  if (!request.headers.get("x-forwarded-proto")) {
+    headers.set("x-forwarded-proto", request.nextUrl.protocol.replace(":", ""));
+  }
+
+  if (!request.headers.get("x-forwarded-host")) {
+    headers.set("x-forwarded-host", request.nextUrl.host);
+  }
+
+  return headers;
+}
+
+async function proxy(request: NextRequest, params: { path?: string[] }) {
+  const targetUrl = `${readBackendApiUrl()}/${(params.path ?? []).join("/")}${request.nextUrl.search}`;
+
+  try {
+    const response = await fetch(targetUrl, {
+      method: request.method,
+      headers: readForwardHeaders(request),
+      body:
+        request.method === "GET" || request.method === "HEAD"
+          ? undefined
+          : await request.arrayBuffer(),
+      cache: "no-store",
+      redirect: "manual"
+    });
+    const headers = new Headers(response.headers);
+
+    headers.delete("content-encoding");
+    headers.delete("content-length");
+
+    return new Response(await response.arrayBuffer(), {
+      status: response.status,
+      statusText: response.statusText,
+      headers
+    });
+  } catch {
+    return Response.json(
+      {
+        statusCode: 502,
+        message: "Nao foi possivel alcancar a API do Patrimoniq.",
+        timestamp: new Date().toISOString()
+      },
+      {
+        status: 502
+      }
+    );
+  }
+}
+
+export async function GET(
+  request: NextRequest,
+  context: {
+    params: Promise<{ path?: string[] }>;
+  }
+) {
+  return proxy(request, await context.params);
+}
+
+export async function POST(
+  request: NextRequest,
+  context: {
+    params: Promise<{ path?: string[] }>;
+  }
+) {
+  return proxy(request, await context.params);
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: {
+    params: Promise<{ path?: string[] }>;
+  }
+) {
+  return proxy(request, await context.params);
+}
+
+export async function PUT(
+  request: NextRequest,
+  context: {
+    params: Promise<{ path?: string[] }>;
+  }
+) {
+  return proxy(request, await context.params);
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: {
+    params: Promise<{ path?: string[] }>;
+  }
+) {
+  return proxy(request, await context.params);
+}
+
+export async function OPTIONS(
+  request: NextRequest,
+  context: {
+    params: Promise<{ path?: string[] }>;
+  }
+) {
+  return proxy(request, await context.params);
+}

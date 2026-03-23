@@ -1,0 +1,37 @@
+-- Gere o arquivo supabase/roles.sql a partir deste template.
+-- O script scripts/render-supabase-role.ps1 injeta a senha do usuario prisma.
+
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'prisma') then
+    create role "prisma" with login password '__PRISMA_DB_PASSWORD__' bypassrls createdb;
+  else
+    alter role "prisma" with login password '__PRISMA_DB_PASSWORD__' bypassrls createdb;
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_auth_members membership
+    join pg_roles granted_role on granted_role.oid = membership.roleid
+    join pg_roles member_role on member_role.oid = membership.member
+    where granted_role.rolname = 'prisma'
+      and member_role.rolname = 'postgres'
+  ) then
+    grant "prisma" to "postgres";
+  end if;
+end
+$$;
+
+grant usage on schema public to prisma;
+grant create on schema public to prisma;
+grant all on all tables in schema public to prisma;
+grant all on all routines in schema public to prisma;
+grant all on all sequences in schema public to prisma;
+
+alter default privileges for role postgres in schema public grant all on tables to prisma;
+alter default privileges for role postgres in schema public grant all on routines to prisma;
+alter default privileges for role postgres in schema public grant all on sequences to prisma;

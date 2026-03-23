@@ -1,0 +1,15 @@
+{
+  email {$LETSENCRYPT_EMAIL}
+}
+
+{$BETA_DOMAIN} {
+  encode gzip zstd
+
+  header {
+    X-Frame-Options "DENY"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+
+  reverse_proxy web:3000
+}

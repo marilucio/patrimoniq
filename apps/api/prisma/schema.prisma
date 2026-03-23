@@ -1,0 +1,879 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CurrencyCode {
+  BRL
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  CASH
+  INVESTMENT
+  WALLET
+  BENEFIT
+  OTHER
+}
+
+enum CardType {
+  CREDIT
+  DEBIT
+  HYBRID
+}
+
+enum CardNetwork {
+  VISA
+  MASTERCARD
+  ELO
+  AMEX
+  HIPERCARD
+  OTHER
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+  CREDIT_CARD_PURCHASE
+  CREDIT_CARD_PAYMENT
+  GOAL_CONTRIBUTION
+  INVESTMENT
+  LIABILITY_PAYMENT
+  REFUND
+}
+
+enum TransactionStatus {
+  PLANNED
+  PENDING
+  CLEARED
+  OVERDUE
+  CANCELED
+}
+
+enum CategoryDirection {
+  INCOME
+  EXPENSE
+  SAVING
+  DEBT
+}
+
+enum CostNature {
+  FIXED
+  VARIABLE
+  EXTRAORDINARY
+}
+
+enum Essentiality {
+  ESSENTIAL
+  IMPORTANT
+  SUPERFLUOUS
+  IMPULSE
+}
+
+enum PaymentMethod {
+  PIX
+  CASH
+  DEBIT_CARD
+  CREDIT_CARD
+  ACCOUNT_DEBIT
+  BANK_SLIP
+  TRANSFER
+  OTHER
+}
+
+enum BudgetCadence {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum GoalKind {
+  EMERGENCY_FUND
+  RETIREMENT
+  TRAVEL
+  EDUCATION
+  HOME
+  CAR
+  RENOVATION
+  CUSTOM
+}
+
+enum GoalPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum GoalStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELED
+}
+
+enum AssetType {
+  CASH
+  INVESTMENT
+  REAL_ESTATE
+  VEHICLE
+  BUSINESS
+  OTHER
+}
+
+enum LiabilityType {
+  CREDIT_CARD
+  PERSONAL_LOAN
+  MORTGAGE
+  AUTO_LOAN
+  FINANCING
+  TAX
+  OTHER
+}
+
+enum RecurrenceFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  CUSTOM
+}
+
+enum RecurrenceStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AlertType {
+  CASHFLOW
+  RISK
+  DEBT
+  GOAL
+  BUDGET
+  SUBSCRIPTION
+  BEHAVIOR
+  TAX
+}
+
+enum InsightType {
+  SAVINGS
+  OPPORTUNITY
+  RISK
+  TREND
+  COACHING
+  GOAL
+  DEBT
+}
+
+enum InsightStatus {
+  NEW
+  READ
+  DISMISSED
+  APPLIED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELED
+  UNKNOWN
+}
+
+enum DocumentType {
+  RECEIPT
+  INVOICE
+  BILL
+  STATEMENT
+  TAX
+  OTHER
+}
+
+enum TaxTagType {
+  MEDICAL
+  EDUCATION
+  DEPENDENT
+  DONATION
+  INSURANCE
+  INVESTMENT
+  OTHER
+}
+
+enum SimulationType {
+  EXPENSE_CUT
+  INVEST_MORE
+  DEBT_SWAP
+  LOSE_INCOME
+  INCREASE_INCOME
+  FINANCE_CAR
+  CUSTOM
+}
+
+enum MissionType {
+  NO_SPEND
+  DELIVERY_DETOX
+  IMPULSE_PAUSE
+  EMERGENCY_BOOST
+  DEBT_ATTACK
+  REVIEW_WEEK
+  CUSTOM
+}
+
+enum MissionStatus {
+  SUGGESTED
+  ACTIVE
+  COMPLETED
+  FAILED
+  ARCHIVED
+}
+
+enum DataSource {
+  MANUAL
+  IMPORT
+  OPEN_FINANCE
+  OCR
+  IA
+}
+
+enum ProductEventName {
+  REGISTER_COMPLETED
+  LOGIN_COMPLETED
+  PASSWORD_RESET_REQUESTED
+  DASHBOARD_FIRST_VIEWED
+  FIRST_ACCOUNT_CREATED
+  FIRST_INCOME_CREATED
+  FIRST_EXPENSE_CREATED
+  FIRST_GOAL_CREATED
+  ONBOARDING_STALLED
+  FEEDBACK_SUBMITTED
+}
+
+enum FeedbackCategory {
+  BUG
+  IDEA
+  ONBOARDING
+  UX
+  OTHER
+}
+
+enum FeedbackStatus {
+  NEW
+  REVIEWED
+  ARCHIVED
+}
+
+model User {
+  id                  String               @id @default(uuid())
+  email               String               @unique
+  fullName            String
+  passwordHash        String?
+  locale              String               @default("pt-BR")
+  avatarUrl           String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  accounts            Account[]
+  cards               Card[]
+  categories          Category[]
+  subcategories       Subcategory[]
+  budgets             Budget[]
+  goals               Goal[]
+  goalContributions   GoalContribution[]
+  assets              Asset[]
+  liabilities         Liability[]
+  netWorthSnapshots   NetWorthSnapshot[]
+  recurringTransactions RecurringTransaction[]
+  alerts              Alert[]
+  createdAlerts       Alert[]              @relation("AlertCreatedBy")
+  insights            Insight[]
+  createdInsights     Insight[]            @relation("InsightCreatedBy")
+  subscriptions       Subscription[]
+  taxTags             TaxTag[]
+  documents           Document[]
+  uploadedDocuments   Document[]           @relation("DocumentUploadedBy")
+  simulations         Simulation[]
+  missions            Mission[]
+  scoreHistory        ScoreHistory[]
+  transactions        Transaction[]        @relation("UserTransactions")
+  createdTransactions Transaction[]        @relation("TransactionCreatedBy")
+  productEvents       ProductEvent[]
+  feedbackSubmissions FeedbackSubmission[]
+}
+
+model Session {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  userAgent  String?
+  ipAddress  String?
+  expiresAt  DateTime
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt, revokedAt])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt, consumedAt])
+}
+
+model Account {
+  id                       String                @id @default(uuid())
+  userId                   String
+  institutionName          String?
+  name                     String
+  type                     AccountType
+  currency                 CurrencyCode          @default(BRL)
+  openingBalance           Decimal               @default(0) @db.Decimal(14, 2)
+  currentBalance           Decimal               @default(0) @db.Decimal(14, 2)
+  creditLimit              Decimal?              @db.Decimal(14, 2)
+  includeInNetWorth        Boolean               @default(true)
+  isArchived               Boolean               @default(false)
+  dataSource               DataSource            @default(MANUAL)
+  lastSyncedAt             DateTime?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  user                     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards                    Card[]
+  transactions             Transaction[]         @relation("TransactionAccount")
+  counterpartyTransactions Transaction[]         @relation("TransactionCounterpartyAccount")
+  recurringTransactions    RecurringTransaction[]
+  assets                   Asset[]
+  goalContributions        GoalContribution[]
+  documents                Document[]
+
+  @@index([userId, type, isArchived])
+}
+
+model Card {
+  id                    String                @id @default(uuid())
+  userId                String
+  accountId             String?
+  issuerName            String?
+  name                  String
+  network               CardNetwork?
+  type                  CardType              @default(CREDIT)
+  statementClosingDay   Int
+  statementDueDay       Int
+  limitAmount           Decimal               @default(0) @db.Decimal(14, 2)
+  currentOutstanding    Decimal               @default(0) @db.Decimal(14, 2)
+  includeInCommitment   Boolean               @default(true)
+  isArchived            Boolean               @default(false)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account               Account?              @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  transactions          Transaction[]         @relation("TransactionCard")
+  recurringTransactions RecurringTransaction[]
+  liabilities           Liability[]
+
+  @@index([userId, isArchived])
+}
+
+model Category {
+  id                    String                @id @default(uuid())
+  userId                String
+  name                  String
+  slug                  String
+  direction             CategoryDirection
+  costNature            CostNature?
+  isSystem              Boolean               @default(false)
+  isActive              Boolean               @default(true)
+  sortOrder             Int                   @default(0)
+  iconName              String?
+  colorToken            String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subcategories         Subcategory[]
+  transactions          Transaction[]
+  budgets               Budget[]
+  recurringTransactions RecurringTransaction[]
+  subscriptions         Subscription[]
+  taxTags               TaxTag[]
+
+  @@unique([userId, slug])
+  @@index([userId, direction, isActive])
+}
+
+model Subcategory {
+  id                    String                @id @default(uuid())
+  userId                String
+  categoryId            String
+  name                  String
+  slug                  String
+  costNature            CostNature?
+  essentiality          Essentiality?
+  isSystem              Boolean               @default(false)
+  isActive              Boolean               @default(true)
+  sortOrder             Int                   @default(0)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category              Category              @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  transactions          Transaction[]
+  budgets               Budget[]
+  recurringTransactions RecurringTransaction[]
+  subscriptions         Subscription[]
+
+  @@unique([categoryId, slug])
+  @@index([userId, categoryId, isActive])
+}
+
+model Budget {
+  id                    String        @id @default(uuid())
+  userId                String
+  categoryId            String?
+  subcategoryId         String?
+  name                  String
+  cadence               BudgetCadence @default(MONTHLY)
+  periodStart           DateTime
+  periodEnd             DateTime
+  amountLimit           Decimal       @db.Decimal(14, 2)
+  alertThresholdPercent Int           @default(85)
+  rolloverEnabled       Boolean       @default(false)
+  locked                Boolean       @default(false)
+  isArchived            Boolean       @default(false)
+  notes                 String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category              Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategory           Subcategory?  @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, periodStart, periodEnd, isArchived])
+  @@index([userId, categoryId, subcategoryId])
+}
+
+model Goal {
+  id                        String             @id @default(uuid())
+  userId                    String
+  name                      String
+  kind                      GoalKind
+  priority                  GoalPriority
+  status                    GoalStatus         @default(ACTIVE)
+  targetAmount              Decimal            @db.Decimal(14, 2)
+  currentAmount             Decimal            @default(0) @db.Decimal(14, 2)
+  monthlyContributionTarget Decimal?           @db.Decimal(14, 2)
+  minimumSafetyReserve      Decimal?           @db.Decimal(14, 2)
+  targetDate                DateTime?
+  bucketCode                String?
+  notes                     String?
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+  user                      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributions             GoalContribution[]
+  alerts                    Alert[]
+  simulations               Simulation[]
+
+  @@index([userId, status, priority])
+}
+
+model GoalContribution {
+  id               String       @id @default(uuid())
+  userId           String
+  goalId           String
+  transactionId    String?
+  accountId        String?
+  amount           Decimal      @db.Decimal(14, 2)
+  contributionDate DateTime
+  notes            String?
+  createdAt        DateTime     @default(now())
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal             Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  transaction      Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  account          Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([userId, goalId, contributionDate])
+}
+
+model Asset {
+  id                String    @id @default(uuid())
+  userId            String
+  linkedAccountId   String?
+  name              String
+  type              AssetType
+  currentValue      Decimal   @db.Decimal(14, 2)
+  acquisitionValue  Decimal?  @db.Decimal(14, 2)
+  ownershipPercent  Decimal?  @db.Decimal(5, 2)
+  acquiredAt        DateTime?
+  notes             String?
+  includeInNetWorth Boolean   @default(true)
+  isArchived        Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkedAccount     Account?  @relation(fields: [linkedAccountId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type, isArchived])
+}
+
+model Liability {
+  id                  String         @id @default(uuid())
+  userId              String
+  linkedCardId        String?
+  name                String
+  type                LiabilityType
+  originalAmount      Decimal?       @db.Decimal(14, 2)
+  currentBalance      Decimal        @db.Decimal(14, 2)
+  interestRateMonthly Decimal?       @db.Decimal(7, 4)
+  monthlyPayment      Decimal?       @db.Decimal(14, 2)
+  dueDay              Int?
+  payoffDate          DateTime?
+  isHighPriority      Boolean        @default(false)
+  includeInNetWorth   Boolean        @default(true)
+  isArchived          Boolean        @default(false)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkedCard          Card?          @relation(fields: [linkedCardId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type, isArchived])
+}
+
+model NetWorthSnapshot {
+  id               String    @id @default(uuid())
+  userId           String
+  snapshotDate     DateTime
+  totalAssets      Decimal   @db.Decimal(14, 2)
+  totalLiabilities Decimal   @db.Decimal(14, 2)
+  netWorth         Decimal   @db.Decimal(14, 2)
+  liquidReserve    Decimal   @db.Decimal(14, 2)
+  investedAssets   Decimal   @db.Decimal(14, 2)
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, snapshotDate])
+  @@index([userId, snapshotDate])
+}
+
+model RecurringTransaction {
+  id                  String              @id @default(uuid())
+  userId              String
+  accountId           String?
+  cardId              String?
+  categoryId          String?
+  subcategoryId       String?
+  name                String
+  type                TransactionType
+  amount              Decimal             @db.Decimal(14, 2)
+  currency            CurrencyCode        @default(BRL)
+  frequency           RecurrenceFrequency
+  intervalCount       Int                 @default(1)
+  startDate           DateTime
+  endDate             DateTime?
+  nextOccurrence      DateTime
+  dayOfMonth          Int?
+  status              RecurrenceStatus    @default(ACTIVE)
+  autoPost            Boolean             @default(false)
+  costNature          CostNature?
+  essentiality        Essentiality?
+  vendorName          String?
+  notes               String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account             Account?            @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  card                Card?               @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  category            Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategory         Subcategory?        @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  transactions        Transaction[]
+  subscriptions       Subscription[]
+
+  @@index([userId, status, nextOccurrence])
+}
+
+model Alert {
+  id              String         @id @default(uuid())
+  userId          String
+  goalId          String?
+  createdByUserId String?
+  severity        AlertSeverity
+  type            AlertType
+  title           String
+  message         String
+  actionLabel     String?
+  actionRoute     String?
+  triggerDate     DateTime       @default(now())
+  acknowledgedAt  DateTime?
+  dismissedAt     DateTime?
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal            Goal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  createdByUser   User?          @relation("AlertCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId, severity, acknowledgedAt])
+}
+
+model Insight {
+  id              String         @id @default(uuid())
+  userId          String
+  createdByUserId String?
+  type            InsightType
+  status          InsightStatus  @default(NEW)
+  title           String
+  summary         String
+  explanation     String?
+  recommendation  String?
+  impactAmount    Decimal?       @db.Decimal(14, 2)
+  impactPercent   Decimal?       @db.Decimal(7, 2)
+  validUntil      DateTime?
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdByUser   User?          @relation("InsightCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type, status])
+}
+
+model Subscription {
+  id                     String              @id @default(uuid())
+  userId                 String
+  categoryId             String?
+  subcategoryId          String?
+  recurringTransactionId String?
+  name                   String
+  vendorName             String
+  amount                 Decimal             @db.Decimal(14, 2)
+  billingCycle           RecurrenceFrequency @default(MONTHLY)
+  status                 SubscriptionStatus  @default(ACTIVE)
+  firstDetectedAt        DateTime
+  nextChargeDate         DateTime?
+  lastChargeDate         DateTime?
+  cancellationUrl        String?
+  notes                  String?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  user                   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category               Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategory            Subcategory?        @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  recurringTransaction   RecurringTransaction? @relation(fields: [recurringTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, nextChargeDate])
+}
+
+model TaxTag {
+  id               String              @id @default(uuid())
+  userId           String
+  categoryId       String?
+  name             String
+  code             String
+  type             TaxTagType
+  deductible       Boolean             @default(false)
+  annualCap        Decimal?            @db.Decimal(14, 2)
+  notes            String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category         Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  transactionLinks TransactionTaxTag[]
+
+  @@unique([userId, code])
+}
+
+model Transaction {
+  id                    String                @id @default(uuid())
+  userId                String
+  accountId             String?
+  counterpartyAccountId String?
+  cardId                String?
+  categoryId            String?
+  subcategoryId         String?
+  recurringTransactionId String?
+  createdByUserId       String?
+  externalReference     String?
+  type                  TransactionType
+  status                TransactionStatus     @default(CLEARED)
+  source                DataSource            @default(MANUAL)
+  description           String
+  merchantName          String?
+  amount                Decimal               @db.Decimal(14, 2)
+  currency              CurrencyCode          @default(BRL)
+  dueDate               DateTime?
+  postedAt              DateTime
+  competenceMonth       DateTime?
+  settledAt             DateTime?
+  isInstallment         Boolean               @default(false)
+  installmentGroupId    String?
+  installmentIndex      Int?
+  installmentTotal      Int?
+  isTransferPair        Boolean               @default(false)
+  isTaxDeductible       Boolean               @default(false)
+  paymentMethod         PaymentMethod?
+  costNature            CostNature?
+  essentiality          Essentiality?
+  notes                 String?
+  tags                  Json?
+  attachmentCount       Int                   @default(0)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  user                  User                  @relation("UserTransactions", fields: [userId], references: [id], onDelete: Cascade)
+  account               Account?              @relation("TransactionAccount", fields: [accountId], references: [id], onDelete: SetNull)
+  counterpartyAccount   Account?              @relation("TransactionCounterpartyAccount", fields: [counterpartyAccountId], references: [id], onDelete: SetNull)
+  card                  Card?                 @relation("TransactionCard", fields: [cardId], references: [id], onDelete: SetNull)
+  category              Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategory           Subcategory?          @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  recurringTransaction  RecurringTransaction? @relation(fields: [recurringTransactionId], references: [id], onDelete: SetNull)
+  createdByUser         User?                 @relation("TransactionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  goalContributions     GoalContribution[]
+  documents             Document[]
+  taxTags               TransactionTaxTag[]
+
+  @@index([userId, postedAt, type])
+  @@index([userId, dueDate, status])
+  @@index([userId, installmentGroupId])
+  @@index([userId, categoryId, subcategoryId])
+}
+
+model TransactionTaxTag {
+  transactionId  String
+  taxTagId       String
+  amountEligible Decimal?    @db.Decimal(14, 2)
+  notes          String?
+  transaction    Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  taxTag         TaxTag      @relation(fields: [taxTagId], references: [id], onDelete: Cascade)
+
+  @@id([transactionId, taxTagId])
+}
+
+model Document {
+  id               String       @id @default(uuid())
+  userId           String
+  uploadedByUserId String?
+  accountId        String?
+  transactionId    String?
+  type             DocumentType
+  storagePath      String
+  fileName         String
+  mimeType         String
+  fileSizeBytes    Int
+  checksum         String?
+  parsedText       String?
+  extractedData    Json?
+  createdAt        DateTime     @default(now())
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uploadedBy       User?        @relation("DocumentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  account          Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  transaction      Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type, createdAt])
+}
+
+model Simulation {
+  id                 String         @id @default(uuid())
+  userId             String
+  goalId             String?
+  name               String
+  type               SimulationType
+  assumptions        Json
+  results            Json
+  monthlyDelta       Decimal?       @db.Decimal(14, 2)
+  targetImpactMonths Int?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal               Goal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type, createdAt])
+}
+
+model Mission {
+  id              String        @id @default(uuid())
+  userId          String
+  type            MissionType
+  status          MissionStatus @default(SUGGESTED)
+  title           String
+  description     String
+  weeklyTarget    Int?
+  rewardLabel     String?
+  progressCurrent Int           @default(0)
+  progressTarget  Int           @default(1)
+  startsAt        DateTime
+  endsAt          DateTime
+  completedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, startsAt])
+}
+
+model ScoreHistory {
+  id                  String    @id @default(uuid())
+  userId              String
+  snapshotDate        DateTime
+  overallScore        Int
+  organizationScore   Int
+  predictabilityScore Int
+  disciplineScore     Int
+  protectionScore     Int
+  growthScore         Int
+  debtScore           Int
+  drivers             Json?
+  createdAt           DateTime  @default(now())
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, snapshotDate])
+  @@index([userId, snapshotDate])
+}
+
+model ProductEvent {
+  id         String           @id @default(uuid())
+  userId     String?
+  sessionId  String?
+  name       ProductEventName
+  pagePath   String?
+  dedupeKey  String?          @unique
+  metadata   Json?
+  occurredAt DateTime         @default(now())
+  user       User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, name, occurredAt])
+  @@index([name, occurredAt])
+}
+
+model FeedbackSubmission {
+  id           String           @id @default(uuid())
+  userId       String
+  category     FeedbackCategory @default(OTHER)
+  status       FeedbackStatus   @default(NEW)
+  pagePath     String?
+  message      String
+  contactEmail String?
+  userAgent    String?
+  metadata     Json?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}

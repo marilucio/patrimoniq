@@ -1,0 +1,4 @@
+-- O seed principal do Patrimoniq continua sendo executado via Prisma:
+-- pnpm --filter @patrimoniq/api db:seed
+--
+-- Este arquivo existe apenas para manter o fluxo do Supabase CLI previsivel.

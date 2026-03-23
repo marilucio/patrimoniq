@@ -1,0 +1,10 @@
+# Supabase
+.branches
+.temp
+roles.sql
+database.types.ts
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local
