@@ -1,15 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
-import {
-  NotificationDeliveryChannel,
-  NotificationDispatchStatus,
-  NotificationEventType,
-  Prisma
-} from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { EmailService } from "./email.service";
 import {
   billDueReminderEmailTemplate,
   budgetAlertEmailTemplate,
-  weeklyDigestEmailTemplate
+  weeklyDigestEmailTemplate,
 } from "./email.templates";
 import { isInflow, isOutflow, toNumber } from "./finance.utils";
 import { PrismaService } from "./prisma.service";
@@ -29,14 +24,105 @@ interface AlertEmailCandidate {
   metadata?: Record<string, unknown>;
 }
 
+type NotificationDeliveryChannel = "EMAIL" | "PUSH" | "INTERNAL";
+type NotificationEventType =
+  | "BILL_DUE"
+  | "BILL_OVERDUE"
+  | "BUDGET_NEAR_LIMIT"
+  | "BUDGET_EXCEEDED"
+  | "WEEKLY_DIGEST";
+type NotificationDispatchStatus = "PENDING" | "SENT" | "FAILED";
+
+interface NotificationPreferencesRecord {
+  userId: string;
+  emailAlerts: boolean;
+  weeklyDigest: boolean;
+  dueDateReminders: boolean;
+  budgetAlerts: boolean;
+  pushEnabled: boolean;
+}
+
+interface NotificationDispatchRecord {
+  id: string;
+  userId: string;
+  channel: NotificationDeliveryChannel;
+  eventType: NotificationEventType;
+  dedupeKey: string;
+  status: NotificationDispatchStatus;
+  metadata: unknown;
+  sentAt: Date | null;
+  failedAt: Date | null;
+  failureCode: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
   ) {}
+
+  private notificationPreferencesStore() {
+    return (
+      this.prisma as unknown as {
+        notificationPreference: {
+          findUnique: (args: {
+            where: { userId: string };
+          }) => Promise<NotificationPreferencesRecord | null>;
+          findMany: (args: {
+            where: { emailAlerts: boolean; weeklyDigest: boolean };
+            include: {
+              user: {
+                select: {
+                  id: true;
+                  email: true;
+                  fullName: true;
+                };
+              };
+            };
+          }) => Promise<
+            Array<
+              NotificationPreferencesRecord & {
+                user: { id: string; email: string; fullName: string };
+              }
+            >
+          >;
+        };
+      }
+    ).notificationPreference;
+  }
+
+  private notificationDispatchStore() {
+    return (
+      this.prisma as unknown as {
+        notificationDispatch: {
+          create: (args: {
+            data: {
+              userId: string;
+              channel: NotificationDeliveryChannel;
+              eventType: NotificationEventType;
+              dedupeKey: string;
+              status: NotificationDispatchStatus;
+              metadata?: Prisma.InputJsonValue;
+            };
+          }) => Promise<NotificationDispatchRecord>;
+          update: (args: {
+            where: { id: string };
+            data: {
+              status: NotificationDispatchStatus;
+              sentAt?: Date | null;
+              failedAt?: Date | null;
+              failureCode?: string | null;
+            };
+          }) => Promise<NotificationDispatchRecord>;
+        };
+      }
+    ).notificationDispatch;
+  }
 
   /**
    * Dispatch a notification to a specific channel.
@@ -52,14 +138,16 @@ export class NotificationService {
 
     if (payload.channel === "push") {
       // Push notifications reserved for future implementation
-      this.logger.debug(`Push notification skipped (not implemented): ${payload.type}`);
+      this.logger.debug(
+        `Push notification skipped (not implemented): ${payload.type}`,
+      );
       return;
     }
 
     if (payload.channel === "email") {
       const user = await this.prisma.user.findUnique({
         where: { id: payload.userId },
-        select: { id: true, email: true, fullName: true }
+        select: { id: true, email: true, fullName: true },
       });
       if (!user) return;
       await this.sendEmailNotification(payload, user);
@@ -75,11 +163,11 @@ export class NotificationService {
     const [user, preferences] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: input.userId },
-        select: { id: true, email: true, fullName: true }
+        select: { id: true, email: true, fullName: true },
       }),
-      this.prisma.notificationPreference.findUnique({
-        where: { userId: input.userId }
-      })
+      this.notificationPreferencesStore().findUnique({
+        where: { userId: input.userId },
+      }),
     ]);
 
     if (!user) {
@@ -89,7 +177,7 @@ export class NotificationService {
     const effective = {
       emailAlerts: preferences?.emailAlerts ?? true,
       dueDateReminders: preferences?.dueDateReminders ?? true,
-      budgetAlerts: preferences?.budgetAlerts ?? true
+      budgetAlerts: preferences?.budgetAlerts ?? true,
     };
 
     if (!effective.emailAlerts) {
@@ -105,14 +193,16 @@ export class NotificationService {
       if (!email) continue;
 
       if (
-        (email.eventType === "BILL_DUE" || email.eventType === "BILL_OVERDUE") &&
+        (email.eventType === "BILL_DUE" ||
+          email.eventType === "BILL_OVERDUE") &&
         !effective.dueDateReminders
       ) {
         continue;
       }
 
       if (
-        (email.eventType === "BUDGET_NEAR_LIMIT" || email.eventType === "BUDGET_EXCEEDED") &&
+        (email.eventType === "BUDGET_NEAR_LIMIT" ||
+          email.eventType === "BUDGET_EXCEEDED") &&
         !effective.budgetAlerts
       ) {
         continue;
@@ -127,8 +217,8 @@ export class NotificationService {
         dedupeKey,
         metadata: {
           alertDedupeKey: alert.dedupeKey,
-          alertTitle: alert.title
-        }
+          alertTitle: alert.title,
+        },
       });
 
       if (!dispatch) continue;
@@ -139,9 +229,9 @@ export class NotificationService {
             userId: input.userId,
             channel: "email",
             type: email.type,
-            data: email.data
+            data: email.data,
           },
-          user
+          user,
         );
         await this.markDispatchSent(dispatch.id);
         sent += 1;
@@ -157,20 +247,20 @@ export class NotificationService {
     const now = referenceDate ?? new Date();
     const weekBucket = this.weekBucket(now);
     const periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const preferences = await this.prisma.notificationPreference.findMany({
+    const preferences = await this.notificationPreferencesStore().findMany({
       where: {
         emailAlerts: true,
-        weeklyDigest: true
+        weeklyDigest: true,
       },
       include: {
         user: {
           select: {
             id: true,
             email: true,
-            fullName: true
-          }
-        }
-      }
+            fullName: true,
+          },
+        },
+      },
     });
 
     let attempted = 0;
@@ -186,8 +276,8 @@ export class NotificationService {
         eventType: "WEEKLY_DIGEST",
         dedupeKey,
         metadata: {
-          weekBucket
-        }
+          weekBucket,
+        },
       });
 
       if (!dispatch) continue;
@@ -199,13 +289,13 @@ export class NotificationService {
             status: "CLEARED",
             postedAt: {
               gte: periodStart,
-              lte: now
-            }
+              lte: now,
+            },
           },
           select: {
             type: true,
-            amount: true
-          }
+            amount: true,
+          },
         });
         const income = transactions
           .filter((transaction) => isInflow(transaction.type))
@@ -217,8 +307,8 @@ export class NotificationService {
           where: {
             userId: user.id,
             dismissedAt: null,
-            acknowledgedAt: null
-          }
+            acknowledgedAt: null,
+          },
         });
 
         await this.sendEmailNotification(
@@ -230,10 +320,10 @@ export class NotificationService {
               income: this.formatMoney(income),
               expenses: this.formatMoney(expenses),
               balance: this.formatMoney(income - expenses),
-              alertCount
-            }
+              alertCount,
+            },
           },
-          user
+          user,
         );
         await this.markDispatchSent(dispatch.id);
         sent += 1;
@@ -247,10 +337,12 @@ export class NotificationService {
 
   private async sendEmailNotification(
     payload: NotificationPayload,
-    user: { id: string; email: string; fullName: string }
+    user: { id: string; email: string; fullName: string },
   ) {
     const appUrl =
-      process.env.APP_PUBLIC_URL ?? process.env.FRONTEND_URL ?? "http://localhost:3000";
+      process.env.APP_PUBLIC_URL ??
+      process.env.FRONTEND_URL ??
+      "http://localhost:3000";
 
     try {
       if (payload.type === "bill_due") {
@@ -265,14 +357,14 @@ export class NotificationService {
           billDescription: data.billDescription,
           dueDate: data.dueDate,
           amount: data.amount,
-          appUrl
+          appUrl,
         });
 
         await this.emailService.send({
           to: user.email,
           subject: template.subject,
           text: template.text,
-          html: template.html
+          html: template.html,
         });
       }
 
@@ -290,14 +382,14 @@ export class NotificationService {
           usagePercent: data.usagePercent,
           spent: data.spent,
           limit: data.limit,
-          appUrl
+          appUrl,
         });
 
         await this.emailService.send({
           to: user.email,
           subject: template.subject,
           text: template.text,
-          html: template.html
+          html: template.html,
         });
       }
 
@@ -314,23 +406,28 @@ export class NotificationService {
           expenses: data.expenses,
           balance: data.balance,
           alertCount: data.alertCount,
-          appUrl
+          appUrl,
         });
 
         await this.emailService.send({
           to: user.email,
           subject: template.subject,
           text: template.text,
-          html: template.html
+          html: template.html,
         });
       }
     } catch (error) {
-      this.logger.warn(`Falha ao enviar e-mail de notificacao (${payload.type})`);
+      this.logger.warn(
+        `Falha ao enviar e-mail de notificacao (${payload.type})`,
+      );
       throw error;
     }
   }
 
-  private buildAlertEmailPayload(userId: string, alert: AlertEmailCandidate): {
+  private buildAlertEmailPayload(
+    userId: string,
+    alert: AlertEmailCandidate,
+  ): {
     type: NotificationPayload["type"];
     eventType: NotificationEventType;
     data: Record<string, unknown>;
@@ -343,8 +440,8 @@ export class NotificationService {
         data: {
           billDescription: alert.title.replace(" vence em breve", "").trim(),
           dueDate: String(metadata.dueDate ?? "-"),
-          amount: String(metadata.amountRounded ?? "0")
-        }
+          amount: String(metadata.amountRounded ?? "0"),
+        },
       };
     }
 
@@ -356,8 +453,8 @@ export class NotificationService {
         data: {
           billDescription: alert.title.replace(" esta vencida", "").trim(),
           dueDate: String(metadata.dueDate ?? "-"),
-          amount: String(metadata.amountRounded ?? "0")
-        }
+          amount: String(metadata.amountRounded ?? "0"),
+        },
       };
     }
 
@@ -375,8 +472,8 @@ export class NotificationService {
           budgetName: String(metadata.budgetName ?? alert.title),
           usagePercent: Number(metadata.usage ?? 0),
           spent: String(metadata.spentRounded ?? "0"),
-          limit: String(metadata.limitRounded ?? "0")
-        }
+          limit: String(metadata.limitRounded ?? "0"),
+        },
       };
     }
 
@@ -391,15 +488,15 @@ export class NotificationService {
     metadata?: Record<string, unknown>;
   }) {
     try {
-      return await this.prisma.notificationDispatch.create({
+      return await this.notificationDispatchStore().create({
         data: {
           userId: input.userId,
           channel: input.channel,
           eventType: input.eventType,
           dedupeKey: input.dedupeKey,
           status: "PENDING",
-          metadata: (input.metadata ?? {}) as Prisma.InputJsonValue
-        }
+          metadata: (input.metadata ?? {}) as Prisma.InputJsonValue,
+        },
       });
     } catch (error) {
       if (
@@ -415,27 +512,29 @@ export class NotificationService {
   }
 
   private async markDispatchSent(dispatchId: string) {
-    await this.prisma.notificationDispatch.update({
+    await this.notificationDispatchStore().update({
       where: { id: dispatchId },
       data: {
-        status: NotificationDispatchStatus.SENT,
+        status: "SENT",
         sentAt: new Date(),
         failedAt: null,
-        failureCode: null
-      }
+        failureCode: null,
+      },
     });
   }
 
   private async markDispatchFailed(dispatchId: string, error: unknown) {
-    await this.prisma.notificationDispatch.update({
+    await this.notificationDispatchStore().update({
       where: { id: dispatchId },
       data: {
-        status: NotificationDispatchStatus.FAILED,
+        status: "FAILED",
         failedAt: new Date(),
-        failureCode: this.errorLabel(error)
-      }
+        failureCode: this.errorLabel(error),
+      },
     });
-    this.logger.warn(`Falha ao enviar notificacao por e-mail: ${this.errorLabel(error)}`);
+    this.logger.warn(
+      `Falha ao enviar notificacao por e-mail: ${this.errorLabel(error)}`,
+    );
   }
 
   private errorLabel(error: unknown) {
@@ -448,11 +547,19 @@ export class NotificationService {
   }
 
   private weekBucket(reference: Date) {
-    const date = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), reference.getUTCDate()));
+    const date = new Date(
+      Date.UTC(
+        reference.getUTCFullYear(),
+        reference.getUTCMonth(),
+        reference.getUTCDate(),
+      ),
+    );
     const day = date.getUTCDay() || 7;
     date.setUTCDate(date.getUTCDate() + 4 - day);
     const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-    const week = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    const week = Math.ceil(
+      ((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+    );
     return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
   }
 
