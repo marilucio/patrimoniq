@@ -10,15 +10,35 @@ import { notifyDataChanged } from "../lib/live-data";
 const feedbackCategories = [
   { value: "BUG", label: "Bug" },
   { value: "IDEA", label: "Ideia" },
-  { value: "ONBOARDING", label: "Onboarding" },
+  { value: "ONBOARDING", label: "Primeiros passos" },
   { value: "UX", label: "Experiencia" },
   { value: "OTHER", label: "Outro" }
 ];
+
+const sentimentOptions = [
+  { value: "positive", label: "Gostei", icon: "+" },
+  { value: "neutral", label: "Neutro", icon: "~" },
+  { value: "negative", label: "Problema", icon: "-" }
+];
+
+function pageLabel(pathname: string): string {
+  const labels: Record<string, string> = {
+    "/dashboard": "Visao geral",
+    "/transactions": "Lancamentos",
+    "/budgets": "Orcamentos",
+    "/goals": "Metas",
+    "/net-worth": "Patrimonio",
+    "/reports": "Relatorios",
+    "/settings": "Configuracoes"
+  };
+  return labels[pathname] ?? pathname;
+}
 
 export function FeedbackWidget() {
   const pathname = usePathname();
   const { showToast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [sentiment, setSentiment] = useState<string | null>(null);
   const [category, setCategory] = useState("OTHER");
   const [message, setMessage] = useState("");
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(
@@ -27,6 +47,7 @@ export function FeedbackWidget() {
   const [isPending, startTransition] = useTransition();
 
   function resetForm() {
+    setSentiment(null);
     setCategory("OTHER");
     setMessage("");
     setFeedback(null);
@@ -47,7 +68,8 @@ export function FeedbackWidget() {
         body: {
           category,
           message,
-          pagePath: pathname
+          pagePath: pathname,
+          ...(sentiment ? { sentiment } : {})
         }
       })
         .then((result) => {
@@ -72,44 +94,72 @@ export function FeedbackWidget() {
         onClick={() => setIsOpen((current) => !current)}
         aria-expanded={isOpen}
         aria-controls="feedback-panel"
+        aria-label="Enviar feedback"
       >
-        Feedback beta
+        Feedback
       </button>
 
       {isOpen ? (
-        <section id="feedback-panel" className="feedback-panel">
+        <section
+          id="feedback-panel"
+          className="feedback-panel"
+          role="dialog"
+          aria-label="Enviar feedback"
+        >
           <div className="feedback-panel-header">
             <div>
               <span className="eyebrow">Feedback</span>
-              <h3>Como foi esta tela?</h3>
-              <p>Seu relato vai com o contexto da pagina atual para acelerar a correcao.</p>
+              <h3>Como esta sua experiencia?</h3>
             </div>
             <button type="button" className="ghost-button" onClick={handleClose}>
               Fechar
             </button>
           </div>
 
-          <form className="editor-form" onSubmit={handleSubmit}>
+          <div className="feedback-context">
+            Pagina: <strong>{pageLabel(pathname)}</strong>
+          </div>
+
+          <div className="sentiment-row" role="radiogroup" aria-label="Sentimento">
+            {sentimentOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={
+                  sentiment === option.value
+                    ? "sentiment-button selected"
+                    : "sentiment-button"
+                }
+                onClick={() => setSentiment(option.value)}
+                aria-pressed={sentiment === option.value}
+              >
+                <span className="sentiment-icon">{option.icon}</span>
+                <span>{option.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <form className="editor-form" onSubmit={handleSubmit} aria-label="Formulario de feedback">
             <SelectField
-              label="Categoria"
+              label="Tipo"
               value={category}
               onChange={(event) => setCategory(event.target.value)}
               options={feedbackCategories}
             />
             <TextAreaField
               label="Relato"
-              rows={5}
+              rows={4}
               value={message}
               onChange={(event) => setMessage(event.target.value)}
-              hint="Explique o que aconteceu, o que voce esperava e, se der, como reproduzir."
-              placeholder="Ex.: Na tela de transacoes, eu esperava..."
+              hint="O que aconteceu? O que voce esperava?"
+              placeholder="Descreva brevemente..."
               required
             />
 
             {feedback ? <FeedbackBanner tone={feedback.tone} message={feedback.message} /> : null}
 
             <FormActions
-              submitLabel="Enviar feedback"
+              submitLabel="Enviar"
               cancelLabel="Agora nao"
               onCancel={handleClose}
               pending={isPending}

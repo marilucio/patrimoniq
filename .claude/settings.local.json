@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)",
+      "Bash(cd:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit 2>&1)"
+    ]
+  }
+}

@@ -11,7 +11,12 @@ const eventLabels: Record<ProductEventName, string> = {
   FIRST_INCOME_CREATED: "Primeira receita criada",
   FIRST_EXPENSE_CREATED: "Primeira despesa criada",
   FIRST_GOAL_CREATED: "Primeira meta criada",
+  ONBOARDING_COMPLETED: "Onboarding concluido",
   ONBOARDING_STALLED: "Onboarding interrompido",
+  PROFILE_UPDATED: "Perfil atualizado",
+  PASSWORD_CHANGED: "Senha alterada",
+  SESSIONS_REVOKED: "Sessoes encerradas",
+  PREFERENCES_CHANGED: "Preferencias alteradas",
   FEEDBACK_SUBMITTED: "Feedback enviado",
 };
 
@@ -24,7 +29,12 @@ const orderedEvents: ProductEventName[] = [
   "FIRST_INCOME_CREATED",
   "FIRST_EXPENSE_CREATED",
   "FIRST_GOAL_CREATED",
+  "ONBOARDING_COMPLETED",
   "ONBOARDING_STALLED",
+  "PROFILE_UPDATED",
+  "PASSWORD_CHANGED",
+  "SESSIONS_REVOKED",
+  "PREFERENCES_CHANGED",
   "FEEDBACK_SUBMITTED",
 ];
 

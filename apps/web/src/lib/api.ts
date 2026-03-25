@@ -336,6 +336,43 @@ export interface SettingsResponse {
   };
 }
 
+export interface ProfileUpdateResponse {
+  success: boolean;
+  message: string;
+  profile: {
+    fullName: string;
+    email: string;
+    locale: string;
+  };
+}
+
+export interface PasswordChangeResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface SessionItem {
+  id: string;
+  isCurrent: boolean;
+  userAgent: string | null;
+  ipAddress: string | null;
+  lastSeenAt: string;
+  createdAt: string;
+}
+
+export interface SessionsResponse {
+  sessions: SessionItem[];
+}
+
+export interface PreferencesResponse {
+  success: boolean;
+  message: string;
+  preferences: {
+    currency: string;
+    dateFormat: string;
+  };
+}
+
 export interface DashboardResponse {
   userName: string;
   referenceMonth: string;

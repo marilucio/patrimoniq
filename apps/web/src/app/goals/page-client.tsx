@@ -142,11 +142,11 @@ export function GoalsClientPage() {
       <div className="page-grid">
         <PageIntro
           eyebrow="Metas"
-          title="Voce ainda nao tem metas ativas"
-          description="Comece por uma reserva ou objetivo claro para medir progresso de verdade."
+          title="Nenhuma meta ativa"
+          description="Crie uma meta para acompanhar seu progresso."
         />
         <div className="two-column">
-          <SectionCard title="Nova meta" subtitle="Escolha um objetivo e um valor alvo">
+          <SectionCard title="Nova meta" subtitle="Defina seu primeiro objetivo">
             <form className="editor-form" onSubmit={handleSubmit}>
               <InputField label="Nome" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
               <InputField label="Valor alvo" type="number" min="0" step="0.01" value={form.targetAmount} onChange={(event) => setForm((current) => ({ ...current, targetAmount: event.target.value }))} required />
@@ -156,8 +156,8 @@ export function GoalsClientPage() {
           </SectionCard>
           <EmptyModuleState
             title="Sem metas registradas"
-            description="Cadastre uma meta para acompanhar prazo, progresso e aporte ideal."
-            cta="Criar primeira meta"
+            description="Crie uma meta para acompanhar prazo e progresso."
+            cta="Comecar agora"
           />
         </div>
       </div>
@@ -168,8 +168,8 @@ export function GoalsClientPage() {
     <div className="page-grid">
       <PageIntro
         eyebrow="Metas"
-        title="Objetivos com prioridade e progresso real"
-        description="Acompanhe reserva, viagens e outros planos sem perder a nocao da realidade."
+        title="Suas metas"
+        description="Acompanhe o progresso dos seus objetivos financeiros."
       />
 
       <div className="two-column">
@@ -198,7 +198,7 @@ export function GoalsClientPage() {
           </form>
         </SectionCard>
 
-        <SectionCard title="Suas metas" subtitle="Somente o que esta ativo e precisa avancar">
+        <SectionCard title="Suas metas" subtitle="Metas ativas e em andamento">
           <div className="stack-list">
             {goals.data.items.map((goal) => (
               <div key={goal.id} className="stack-row">
@@ -224,9 +224,9 @@ export function GoalsClientPage() {
         </SectionCard>
       </div>
 
-      <SectionCard title="Simulacoes sugeridas" subtitle="Ajustes simples que mexem no prazo das metas">
+      <SectionCard title="Simulacoes" subtitle="Cenarios que podem acelerar suas metas">
         {goals.data.simulations.length === 0 ? (
-          <EmptyState title="Sem simulacoes disponiveis" description="Conforme seu historico cresce, o app passa a sugerir cenarios." cta="Continuar alimentando dados" />
+          <EmptyState title="Sem simulacoes disponiveis" description="Simulacoes aparecem conforme seu historico cresce." cta="Continue registrando" />
         ) : (
           <div className="stack-list">
             {goals.data.simulations.map((simulation) => (

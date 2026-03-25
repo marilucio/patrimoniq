@@ -262,15 +262,15 @@ export function TransactionsClientPage() {
       <div className="page-grid">
         <PageIntro
           eyebrow="Transacoes"
-          title="Nenhuma transacao registrada ainda"
-          description="Crie suas primeiras receitas e despesas para o Patrimoniq mostrar o mes com clareza."
+          title="Nenhuma transacao registrada"
+          description="Registre receitas e despesas para visualizar seu mes."
         />
         <div className="two-column">
-          <SectionCard title="Nova transacao" subtitle="Comece pelo lancamento mais importante">
+          <SectionCard title="Nova transacao" subtitle="Registre sua primeira movimentacao">
             {accounts.data.items.length === 0 ? (
               <FeedbackBanner
                 tone="info"
-                message="Antes do primeiro lancamento, cadastre pelo menos uma conta em Configuracoes."
+                message="Cadastre uma conta em Configuracoes antes de registrar movimentacoes."
               />
             ) : null}
             <form className="editor-form" onSubmit={handleSubmit}>
@@ -303,9 +303,9 @@ export function TransactionsClientPage() {
             ) : null}
           </SectionCard>
           <EmptyModuleState
-            title="Sua linha do tempo financeira esta vazia"
-            description="Assim que voce registrar as primeiras movimentacoes, filtros e resumo do mes aparecem aqui."
-            cta="Criar primeira transacao"
+            title="Sem movimentacoes ainda"
+            description="Registre receitas e despesas para ativar os filtros e o resumo do mes."
+            cta="Comecar agora"
           />
         </div>
       </div>
@@ -316,8 +316,8 @@ export function TransactionsClientPage() {
     <div className="page-grid">
       <PageIntro
         eyebrow="Transacoes"
-        title="Seu fluxo financeiro do dia a dia"
-        description="Um espaco mais leve para lancar, filtrar e ajustar movimentacoes sem perder tempo."
+        title="Seu fluxo financeiro"
+        description="Lance, filtre e ajuste suas movimentacoes."
         actions={<div className="hero-chip">{transactions.data.pagination.totalItems} registros</div>}
       />
 
@@ -348,7 +348,7 @@ export function TransactionsClientPage() {
 
       <SectionCard
         title="Filtros rapidos"
-        subtitle="Busque lancamentos e refine a lista sem poluir a tela"
+        subtitle="Refine a lista por periodo, categoria ou status"
         className="subtle-card"
       >
         <div className="filter-shell">
@@ -357,7 +357,7 @@ export function TransactionsClientPage() {
             value={filters.search}
             onChange={(event) => patchFilters({ search: event.target.value })}
             placeholder="Ex.: mercado, aluguel, pix"
-            hint="Busque por descricao, categoria ou contexto do gasto."
+            hint="Busque por descricao."
           />
           <SelectField
             label="Direcao"
@@ -409,8 +409,8 @@ export function TransactionsClientPage() {
         <div className="filter-summary">
           <span>
             {hasActiveFilters
-              ? "Filtros ativos ajudam a reduzir ruido e focar no que voce quer revisar."
-              : "Sem filtros ativos. A lista abaixo mostra o retrato mais completo do periodo."}
+              ? "Filtros ativos. A lista mostra apenas os resultados correspondentes."
+              : "Sem filtros. Mostrando todas as movimentacoes do periodo."}
           </span>
           <button type="button" className="ghost-button" onClick={resetFilters}>
             Limpar filtros
@@ -421,16 +421,16 @@ export function TransactionsClientPage() {
       <div className="transaction-layout">
         <SectionCard
           title={editingId ? "Editar transacao" : "Nova transacao"}
-          subtitle="Campos agrupados para acelerar o lancamento e diminuir erro humano"
+          subtitle="Preencha os campos para registrar a movimentacao"
           className="editor-card"
           actions={
-            editingId ? <span className="pill">Voce esta editando um lancamento existente</span> : null
+            editingId ? <span className="pill">Editando lancamento</span> : null
           }
         >
           {accounts.data.items.length === 0 ? (
             <FeedbackBanner
               tone="info"
-              message="Cadastre uma conta em Configuracoes antes de registrar entradas e saidas."
+              message="Cadastre uma conta em Configuracoes antes de registrar movimentacoes."
             />
           ) : null}
           <form className="editor-form" onSubmit={handleSubmit}>
@@ -438,7 +438,7 @@ export function TransactionsClientPage() {
               <section className="form-panel">
                 <div className="form-panel-header">
                   <strong>Essencial</strong>
-                  <p>O minimo para lancar rapido e sem perder contexto.</p>
+                  <p>Dados principais da movimentacao.</p>
                 </div>
                 <div className="form-grid">
                   <InputField
@@ -486,7 +486,7 @@ export function TransactionsClientPage() {
               <section className="form-panel">
                 <div className="form-panel-header">
                   <strong>Classificacao</strong>
-                  <p>Defina como esse lancamento deve aparecer nos seus relatorios.</p>
+                  <p>Como este lancamento aparece nos relatorios.</p>
                 </div>
                 <div className="form-grid">
                   <SelectField
@@ -554,7 +554,7 @@ export function TransactionsClientPage() {
               <section className="form-panel">
                 <div className="form-panel-header">
                   <strong>Conta e observacoes</strong>
-                  <p>Escolha de onde saiu o dinheiro e adicione contexto se precisar.</p>
+                  <p>Conta utilizada e informacoes adicionais.</p>
                 </div>
                 <div className="form-grid">
                   <SelectField
@@ -605,7 +605,7 @@ export function TransactionsClientPage() {
 
         <SectionCard
           title="Lancamentos"
-          subtitle="Uma lista mais legivel para revisar, editar e cancelar sem ruido"
+          subtitle="Revise e gerencie suas movimentacoes"
           className="ledger-card"
           actions={
             <span className="pill">

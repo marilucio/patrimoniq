@@ -13,7 +13,7 @@ function OnboardingCard(props: { onboarding: DashboardResponse["onboarding"] }) 
   return (
     <SectionCard
       title="Primeiros passos"
-      subtitle="Um onboarding leve para deixar sua base pronta logo no primeiro acesso"
+      subtitle="Configure o essencial para comecar a usar"
       className="subtle-card"
       actions={
         <span className="pill">
@@ -23,8 +23,8 @@ function OnboardingCard(props: { onboarding: DashboardResponse["onboarding"] }) 
     >
       {props.onboarding.nextStep ? (
         <div className="soft-empty onboarding-focus">
-          <strong>Faca isso agora: {props.onboarding.nextStep.title}</strong>
-          <p>{props.onboarding.nudge}</p>
+          <strong>{props.onboarding.nextStep.title}</strong>
+          <p>{props.onboarding.nextStep.description ?? props.onboarding.nudge}</p>
           <Link href={props.onboarding.nextStep.href} className="inline-link">
             {props.onboarding.nextStep.cta}
           </Link>
@@ -33,7 +33,7 @@ function OnboardingCard(props: { onboarding: DashboardResponse["onboarding"] }) 
 
       <ProgressBar
         value={progress}
-        label="Progresso do setup inicial"
+        label="Progresso da configuracao"
         tone={progress >= 100 ? "positive" : "default"}
       />
 
@@ -62,11 +62,29 @@ function OnboardingCard(props: { onboarding: DashboardResponse["onboarding"] }) 
 function DashboardGuideCard(props: { guide: string[] }) {
   return (
     <SectionCard
-      title="Como ler este painel"
-      subtitle="So o essencial para entender o que aparece na sua primeira semana"
+      title="Como usar o Patrimoniq"
+      subtitle="Guia rapido para comecar"
       className="subtle-card"
     >
       <div className="guide-list">
+        <article className="guide-row">
+          <span className="guide-dot" />
+          <p><strong>Comece pelas configuracoes:</strong> crie sua conta bancaria e revise as categorias.</p>
+        </article>
+        <article className="guide-row">
+          <span className="guide-dot" />
+          <p><strong>Lance receitas e despesas:</strong> cada lancamento atualiza automaticamente o painel.</p>
+        </article>
+        <article className="guide-row">
+          <span className="guide-dot" />
+          <p><strong>Crie uma meta:</strong> defina um valor-alvo e acompanhe o progresso.</p>
+        </article>
+      </div>
+
+      <div className="guide-divider" />
+
+      <div className="guide-list">
+        <p className="guide-section-title">Leitura do painel</p>
         {props.guide.map((item) => (
           <article key={item} className="guide-row">
             <span className="guide-dot" />
@@ -107,8 +125,8 @@ export function DashboardClientPage() {
       <div className="page-grid">
         <PageIntro
           eyebrow="Visao geral"
-          title="Seu painel ainda esta vazio"
-          description="Comece com poucos passos: conta principal, primeira receita, primeira despesa e uma meta simples. Em poucos minutos o painel ja fica util."
+          title={`Bem-vindo, ${data.userName}`}
+          description="Complete os passos abaixo para ativar seu painel financeiro."
         />
         <div className="two-column">
           <OnboardingCard onboarding={data.onboarding} />
@@ -123,7 +141,7 @@ export function DashboardClientPage() {
       <PageIntro
         eyebrow="Visao geral"
         title={`${data.userName}, este e o essencial do seu mes`}
-        description="Um painel mais limpo para voce bater o olho no saldo, nas contas que ainda podem apertar e no progresso do que importa."
+        description="Saldo, compromissos e progresso das suas metas em um so lugar."
         actions={<div className="hero-chip">Atualizado em {data.referenceMonth}</div>}
       />
 
@@ -132,8 +150,7 @@ export function DashboardClientPage() {
           <span className="eyebrow">Saldo do mes</span>
           <strong>{formatCurrency(data.summary.balanceMonth)}</strong>
           <p>
-            Esse e o que o mes ja entregou ate aqui, com uma leitura mais direta e sem excesso de
-            indicador.
+            Resultado acumulado do mes ate o momento.
           </p>
 
           <div className="metric-strip">
@@ -165,8 +182,8 @@ export function DashboardClientPage() {
           </div>
           <p>
             {data.upcomingBills.length > 0
-              ? `${data.upcomingBills.length} compromisso(s) ainda podem mexer no fechamento deste mes.`
-              : "Sem contas futuras relevantes cadastradas neste momento."}
+              ? `${data.upcomingBills.length} compromisso(s) pendente(s) neste mes.`
+              : "Nenhum compromisso pendente neste mes."}
           </p>
         </div>
       </section>
@@ -181,7 +198,7 @@ export function DashboardClientPage() {
       <div className="dashboard-grid">
         <SectionCard
           title="Contas a vencer"
-          subtitle="O que ainda pode apertar seu fechamento"
+          subtitle="Compromissos pendentes no periodo"
           className="subtle-card"
         >
           {data.upcomingBills.length > 0 ? (
@@ -198,16 +215,16 @@ export function DashboardClientPage() {
             </div>
           ) : (
             <EmptyState
-              title="Nenhuma conta futura relevante"
-              description="Seu restante do mes esta sem compromissos pendentes cadastrados."
-              cta="Fluxo sob controle"
+              title="Nenhum compromisso pendente"
+              description="Voce nao tem contas a vencer neste periodo."
+              cta="Tudo em dia"
             />
           )}
         </SectionCard>
 
         <SectionCard
           title="Metas em destaque"
-          subtitle="O que esta em andamento e merece atencao"
+          subtitle="Progresso das suas metas ativas"
           className="subtle-card"
         >
           {data.goals.length > 0 ? (
@@ -228,9 +245,9 @@ export function DashboardClientPage() {
             </div>
           ) : (
             <EmptyState
-              title="Voce ainda nao tem metas ativas"
-              description="Cadastre uma reserva ou objetivo para acompanhar o progresso aqui."
-              cta="Criar primeira meta"
+              title="Nenhuma meta ativa"
+              description="Crie uma meta para acompanhar seu progresso."
+              cta="Ir para metas"
             />
           )}
         </SectionCard>
@@ -238,7 +255,7 @@ export function DashboardClientPage() {
 
       <SectionCard
         title="Insights uteis"
-        subtitle="Poucos sinais, mas com contexto para agir"
+        subtitle="Indicadores relevantes para suas decisoes"
         className="subtle-card"
       >
         <div className="insight-grid">

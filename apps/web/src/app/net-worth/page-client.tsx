@@ -321,11 +321,11 @@ export function NetWorthClientPage() {
       <div className="page-grid">
         <PageIntro
           eyebrow="Patrimonio"
-          title="Seu patrimonio ainda nao foi mapeado"
-          description="Cadastre ativos e dividas para acompanhar sua riqueza real."
+          title="Nenhum patrimonio registrado"
+          description="Cadastre ativos e dividas para acompanhar seu patrimonio liquido."
         />
         <div className="two-column">
-          <SectionCard title="Novo ativo" subtitle="Comece pelo principal">
+          <SectionCard title="Novo ativo" subtitle="Registre seu primeiro bem">
             <form className="editor-form" onSubmit={submitAsset}>
               <InputField label="Nome" value={assetForm.name} onChange={(event) => setAssetForm((current) => ({ ...current, name: event.target.value }))} required />
               <InputField label="Valor atual" type="number" min="0" step="0.01" value={assetForm.currentValue} onChange={(event) => setAssetForm((current) => ({ ...current, currentValue: event.target.value }))} required />
@@ -335,8 +335,8 @@ export function NetWorthClientPage() {
           </SectionCard>
           <EmptyModuleState
             title="Sem patrimonio registrado"
-            description="Adicione ativos e dividas para ver o patrimonio liquido."
-            cta="Criar primeiro ativo"
+            description="Adicione ativos e dividas para visualizar seu patrimonio liquido."
+            cta="Comecar agora"
           />
         </div>
       </div>
@@ -345,7 +345,7 @@ export function NetWorthClientPage() {
 
   return (
     <div className="page-grid">
-      <PageIntro eyebrow="Patrimonio" title="Seu valor real em foco" description="Ativos, dividas e snapshots em uma experiencia simples." />
+      <PageIntro eyebrow="Patrimonio" title="Seu patrimonio" description="Ativos, dividas e evolucao patrimonial." />
 
       <section className="stats-grid compact">
         <StatCard label="Ativos" value={formatCurrency(assetsTotal)} helper="O que voce possui" tone="positive" />

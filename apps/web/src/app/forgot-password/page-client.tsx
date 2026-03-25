@@ -36,18 +36,18 @@ export function ForgotPasswordClientPage() {
         <span className="eyebrow">Recuperacao</span>
         <h1>Recuperar senha</h1>
         <p>
-          Informe seu e-mail para receber um link seguro e temporario de redefinicao. Se nao
-          chegar em poucos minutos, revise spam e lixo eletronico.
+          Informe seu e-mail para receber um link de redefinicao. Verifique tambem a caixa de spam.
         </p>
       </div>
 
-      <form className="editor-form" onSubmit={handleSubmit}>
+      <form className="editor-form" onSubmit={handleSubmit} aria-label="Formulario de recuperacao de senha">
         <InputField
           label="E-mail"
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
+          autoComplete="email"
         />
 
         {feedback ? <FeedbackBanner tone={feedback.tone} message={feedback.message} /> : null}

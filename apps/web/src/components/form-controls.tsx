@@ -73,7 +73,11 @@ export function FeedbackBanner(props: {
   message: string;
 }) {
   return (
-    <div className={`feedback-banner ${props.tone}`} role="status">
+    <div
+      className={`feedback-banner ${props.tone}`}
+      role={props.tone === "error" ? "alert" : "status"}
+      aria-live={props.tone === "error" ? "assertive" : "polite"}
+    >
       {props.message}
     </div>
   );

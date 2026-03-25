@@ -90,6 +90,13 @@ button:disabled {
   box-shadow: none;
 }
 
+button:focus-visible,
+a:focus-visible,
+.nav-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 input,
 select,
 textarea {
@@ -308,6 +315,12 @@ textarea {
   color: var(--muted-strong);
 }
 
+.user-greeting {
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
 .hero-chip {
   font-weight: 700;
   color: var(--accent-strong);
@@ -430,6 +443,11 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+}
+
+.muted-text {
+  color: var(--muted);
+  font-size: 0.92rem;
 }
 
 .stack-list {
@@ -979,6 +997,54 @@ textarea {
   color: var(--muted);
 }
 
+.feedback-context {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--surface-muted);
+  border-radius: 10px;
+}
+
+.sentiment-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sentiment-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.5rem;
+  font-size: 0.88rem;
+  border-radius: 12px;
+  background: var(--surface-muted);
+  color: var(--ink);
+  box-shadow: none;
+  border: 1px solid transparent;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.sentiment-button:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border-strong);
+}
+
+.sentiment-button.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.sentiment-icon {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
 .toast-item {
   min-width: 280px;
   max-width: 380px;
@@ -1136,6 +1202,19 @@ textarea {
   border-radius: 999px;
   background: linear-gradient(135deg, var(--accent), #143a63);
   box-shadow: 0 0 0 6px rgba(15, 118, 110, 0.08);
+}
+
+.guide-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.5rem 0;
+}
+
+.guide-section-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--muted-strong);
+  margin: 0 0 0.2rem;
 }
 
 .filter-shell,
@@ -1299,5 +1378,28 @@ textarea {
 
   .feedback-panel {
     bottom: 4.75rem;
+  }
+
+  .topbar h1 {
+    font-size: 1.4rem;
+  }
+
+  .topbar > div:first-child > p {
+    display: none;
+  }
+
+  .method-card {
+    display: none;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }

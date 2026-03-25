@@ -139,40 +139,40 @@ export class DashboardService {
     const onboardingSteps = [
       {
         id: "first-account",
-        title: "Cadastre sua primeira conta",
-        description: "Comece pela conta principal para o saldo e o patrimonio fazerem sentido.",
+        title: "Cadastre uma conta",
+        description: "Ex.: conta corrente, poupanca ou carteira. O saldo comeca aqui.",
         done: accountsCount > 0,
         href: "/settings",
-        cta: "Abrir configuracoes"
+        cta: "Criar conta"
       },
       {
         id: "review-categories",
-        title: "Revise suas categorias",
-        description: "Ajuste a base padrao para refletir o seu jeito real de gastar.",
+        title: "Confira suas categorias",
+        description: "Ajuste os nomes para refletir como voce realmente gasta.",
         done: categoriesCount > 0,
         href: "/settings",
-        cta: "Revisar categorias"
+        cta: "Ver categorias"
       },
       {
         id: "first-income",
-        title: "Lance sua primeira receita",
-        description: "Registre o que entrou para o painel mostrar sua sobra de verdade.",
+        title: "Lance uma receita",
+        description: "Registre o que entrou neste mes. O painel calcula a sobra automaticamente.",
         done: incomeTransactionsCount > 0,
         href: "/transactions",
         cta: "Lancar receita"
       },
       {
         id: "first-expense",
-        title: "Lance sua primeira despesa",
-        description: "Sem a primeira saida, seus alertas e relatorios ainda ficam cegos.",
+        title: "Lance uma despesa",
+        description: "Registre uma saida para ativar alertas e relatorios.",
         done: expenseTransactionsCount > 0,
         href: "/transactions",
         cta: "Lancar despesa"
       },
       {
         id: "first-goal",
-        title: "Crie sua primeira meta",
-        description: "Defina um destino para o dinheiro e acompanhe o progresso no painel.",
+        title: "Crie uma meta",
+        description: "Defina um objetivo financeiro e acompanhe o progresso aqui.",
         done: totalGoalsCount > 0,
         href: "/goals",
         cta: "Criar meta"
@@ -192,6 +192,18 @@ export class DashboardService {
         referenceMonth: monthLabel(now)
       }
     });
+
+    if (remainingSteps.length === 0) {
+      await this.analytics.recordOnceForUser({
+        userId: auth.userId,
+        sessionId: auth.sessionId,
+        name: "ONBOARDING_COMPLETED",
+        pagePath: "/dashboard",
+        metadata: {
+          accountAgeHours: Math.round(accountAgeHours)
+        }
+      });
+    }
 
     if (
       remainingSteps.length > 0 &&
@@ -240,14 +252,14 @@ export class DashboardService {
         steps: onboardingSteps,
         nextStep,
         dashboardGuide: [
-          "Saldo do mes: o que ja entrou menos o que ja saiu.",
-          "Contas a vencer: o que ainda pode apertar o fechamento.",
-          "Metas e patrimonio: seus sinais de progresso e protecao."
+          "Saldo do mes mostra receitas menos despesas realizadas.",
+          "Contas a vencer lista os compromissos ainda nao pagos.",
+          "Metas e patrimonio mostram seu progresso financeiro."
         ],
         nudge:
           nextStep
-            ? `Se voce fizer "${nextStep.title.toLowerCase()}", o Patrimoniq ja fica bem mais util no dia a dia.`
-            : "Sua base essencial ja esta pronta. Agora o painel passa a refletir melhor o seu ritmo."
+            ? `Proximo passo: ${nextStep.title.toLowerCase()}.`
+            : "Configuracao concluida. O painel agora reflete seus dados."
       },
       insights: this.buildInsights({
         income,

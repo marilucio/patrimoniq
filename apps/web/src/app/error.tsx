@@ -7,7 +7,7 @@ export default function GlobalError() {
     <div className="page-grid">
       <ErrorState
         title="Erro geral"
-        description="A aplicacao nao conseguiu concluir a leitura da API nesta navegacao."
+        description="Ocorreu um erro inesperado. Tente recarregar a pagina."
       />
     </div>
   );

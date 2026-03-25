@@ -28,6 +28,7 @@ export class FeedbackController {
       category?: FeedbackCategory;
       message: string;
       pagePath?: string;
+      sentiment?: string;
     },
     @Req() request?: RequestLike
   ) {

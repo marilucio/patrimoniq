@@ -158,11 +158,11 @@ export function BudgetsClientPage() {
       <div className="page-grid">
         <PageIntro
           eyebrow="Orcamentos"
-          title="Nenhum limite configurado"
-          description="Defina seus principais tetos mensais para transformar gasto em decisao."
+          title="Nenhum orcamento configurado"
+          description="Defina limites mensais para acompanhar seus gastos."
         />
         <div className="two-column">
-          <SectionCard title="Novo orcamento" subtitle="Comece por moradia, mercado ou delivery">
+          <SectionCard title="Novo orcamento" subtitle="Crie seu primeiro limite">
             <form className="editor-form" onSubmit={handleSubmit}>
               <InputField label="Nome" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
               <InputField label="Limite" type="number" min="0" step="0.01" value={form.amountLimit} onChange={(event) => setForm((current) => ({ ...current, amountLimit: event.target.value }))} required />
@@ -171,9 +171,9 @@ export function BudgetsClientPage() {
             </form>
           </SectionCard>
           <EmptyModuleState
-            title="Sem radar de limites ainda"
-            description="Cadastre um orcamento para comparar planejado, realizado e previsao."
-            cta="Criar primeiro orcamento"
+            title="Sem orcamentos registrados"
+            description="Crie um orcamento para comparar o planejado com o realizado."
+            cta="Comecar agora"
           />
         </div>
       </div>
@@ -184,8 +184,8 @@ export function BudgetsClientPage() {
     <div className="page-grid">
       <PageIntro
         eyebrow="Orcamentos"
-        title="Limites simples para manter o mes sob controle"
-        description="Veja o planejado, o realizado e o risco de estouro sem excesso de informacao."
+        title="Seus orcamentos"
+        description="Planejado, realizado e previsao de fechamento."
       />
 
       <section className="stats-grid compact">
@@ -237,7 +237,7 @@ export function BudgetsClientPage() {
           </form>
         </SectionCard>
 
-        <SectionCard title="Seus limites" subtitle="Leitura rapida do que precisa de atencao">
+        <SectionCard title="Seus limites" subtitle="Acompanhe o consumo de cada orcamento">
           <div className="stack-list">
             {budgets.data.items.map((budget) => {
               const actualPercent = budget.planned > 0 ? (budget.actual / budget.planned) * 100 : 0;

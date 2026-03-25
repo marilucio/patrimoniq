@@ -47,18 +47,19 @@ export function LoginClientPage() {
         <span className="eyebrow">Acesso seguro</span>
         <h1>Entrar na sua conta</h1>
         <p>
-          Seu painel financeiro individual so aparece depois do login, com sessao protegida e
-          recuperacao por e-mail quando voce precisar.
+          Acesse seu painel financeiro com sessao protegida.
         </p>
       </div>
 
-      <form className="editor-form" onSubmit={handleSubmit}>
+      <form className="editor-form" onSubmit={handleSubmit} aria-label="Formulario de login">
         <InputField
           label="E-mail"
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
+          autoComplete="email"
+          aria-label="E-mail"
         />
         <InputField
           label="Senha"
@@ -66,6 +67,8 @@ export function LoginClientPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           required
+          autoComplete="current-password"
+          aria-label="Senha"
         />
 
         {infoMessage ? <FeedbackBanner tone="info" message={infoMessage} /> : null}
@@ -85,10 +88,9 @@ export function LoginClientPage() {
       </form>
 
       <div className="auth-card-footer">
-        <strong>Acesso de demonstracao</strong>
         <p>
-          Use `ricardo@patrimoniq.local` com a senha `Patrimoniq123!` se quiser explorar o beta
-          rapidamente.
+          Ainda nao tem conta?{" "}
+          <Link href="/register" className="inline-link">Criar agora</Link>
         </p>
       </div>
     </section>

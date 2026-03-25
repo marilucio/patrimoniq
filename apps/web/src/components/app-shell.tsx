@@ -3,9 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { PropsWithChildren } from "react";
+import { useApiResource } from "../hooks/use-api-resource";
+import type { AuthSessionResponse } from "../lib/api";
 import { navigation } from "../lib/navigation";
 import { FeedbackWidget } from "./feedback-widget";
 import { LogoutButton } from "./logout-button";
+
+function UserGreeting() {
+  const session = useApiResource<AuthSessionResponse>("/auth/me");
+  const label = session.data?.user?.fullName ?? session.data?.user?.email ?? null;
+
+  if (!label) {
+    return null;
+  }
+
+  return <span className="user-greeting">{label}</span>;
+}
 
 export function AppShell({ children }: PropsWithChildren) {
   const pathname = usePathname();
@@ -79,6 +92,7 @@ export function AppShell({ children }: PropsWithChildren) {
           </div>
 
           <div className="topbar-actions">
+            <UserGreeting />
             <div className="pill">{currentMonth}</div>
             <LogoutButton />
           </div>

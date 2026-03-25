@@ -71,6 +71,7 @@ export class FeedbackService {
       category?: FeedbackCategory;
       message: string;
       pagePath?: string;
+      sentiment?: string;
     },
     context?: {
       userAgent?: string;
@@ -94,7 +95,8 @@ export class FeedbackService {
           contactEmail: auth.email,
           userAgent: context?.userAgent ?? null,
           metadata: {
-            fullName: auth.fullName
+            fullName: auth.fullName,
+            ...(input.sentiment ? { sentiment: input.sentiment } : {})
           }
         }
       });
@@ -129,7 +131,7 @@ export class FeedbackService {
 
     return {
       success: true,
-      message: "Feedback enviado. Obrigado por ajudar a melhorar o beta."
+      message: "Feedback enviado. Obrigado por ajudar a melhorar o Patrimoniq."
     };
   }
 

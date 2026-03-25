@@ -53,17 +53,17 @@ export function RegisterClientPage() {
         <span className="eyebrow">Primeiro acesso</span>
         <h1>Criar conta</h1>
         <p>
-          O cadastro prepara sua estrutura inicial, envia a mensagem de boas-vindas e leva voce
-          direto para o painel.
+          Crie sua conta para comecar a organizar suas financas.
         </p>
       </div>
 
-      <form className="editor-form" onSubmit={handleSubmit}>
+      <form className="editor-form" onSubmit={handleSubmit} aria-label="Formulario de cadastro">
         <InputField
           label="Nome completo"
           value={form.fullName}
           onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))}
           required
+          autoComplete="name"
         />
         <InputField
           label="E-mail"
@@ -71,6 +71,7 @@ export function RegisterClientPage() {
           value={form.email}
           onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
           required
+          autoComplete="email"
         />
         <InputField
           label="Senha"
@@ -79,6 +80,7 @@ export function RegisterClientPage() {
           onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
           hint="Minimo de 8 caracteres."
           required
+          autoComplete="new-password"
         />
         <InputField
           label="Confirmar senha"
@@ -88,6 +90,7 @@ export function RegisterClientPage() {
             setForm((current) => ({ ...current, confirmPassword: event.target.value }))
           }
           required
+          autoComplete="new-password"
         />
 
         {error ? <FeedbackBanner tone="error" message={error} /> : null}

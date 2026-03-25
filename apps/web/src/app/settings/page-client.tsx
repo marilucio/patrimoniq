@@ -10,20 +10,21 @@ import {
   SelectField,
   TextAreaField
 } from "../../components/form-controls";
-import { EmptyState, PageIntro, SectionCard } from "../../components/ui";
+import { PageIntro, SectionCard } from "../../components/ui";
 import { useToast } from "../../components/toast-provider";
 import { useApiResource } from "../../hooks/use-api-resource";
 import {
-  type AnalyticsSummaryResponse,
   apiRequest,
   readApiError,
   type AccountsResponse,
   type CategoriesResponse,
-  type FeedbackResponse,
+  type PasswordChangeResponse,
+  type PreferencesResponse,
+  type ProfileUpdateResponse,
+  type SessionsResponse,
   type SettingsResponse,
   type SubcategoriesResponse
 } from "../../lib/api";
-import { featureFlags } from "../../lib/feature-flags";
 import { notifyDataChanged } from "../../lib/live-data";
 import {
   accountTypeOptions,
@@ -56,14 +57,96 @@ const emptySubcategoryForm = {
   essentiality: ""
 };
 
+const localeOptions = [
+  { value: "pt-BR", label: "Portugues (Brasil)" },
+  { value: "en-US", label: "English (US)" }
+];
+
+const currencyOptions = [
+  { value: "BRL", label: "Real (BRL)" },
+  { value: "USD", label: "Dolar (USD)" },
+  { value: "EUR", label: "Euro (EUR)" }
+];
+
+const dateFormatOptions = [
+  { value: "DD/MM/YYYY", label: "DD/MM/AAAA" },
+  { value: "MM/DD/YYYY", label: "MM/DD/AAAA" },
+  { value: "YYYY-MM-DD", label: "AAAA-MM-DD" }
+];
+
+function readStoredPreference(key: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  return localStorage.getItem(`patrimoniq_${key}`) ?? fallback;
+}
+
+function storePreference(key: string, value: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(`patrimoniq_${key}`, value);
+  }
+}
+
+function formatSessionDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function summarizeUserAgent(ua: string | null): string {
+  if (!ua) return "Navegador desconhecido";
+  if (ua.includes("Chrome") && !ua.includes("Edg")) return "Chrome";
+  if (ua.includes("Edg")) return "Edge";
+  if (ua.includes("Firefox")) return "Firefox";
+  if (ua.includes("Safari") && !ua.includes("Chrome")) return "Safari";
+  return "Navegador";
+}
+
 export function SettingsClientPage() {
   const settings = useApiResource<SettingsResponse>("/settings");
   const accounts = useApiResource<AccountsResponse>("/accounts");
   const categories = useApiResource<CategoriesResponse>("/categories");
   const subcategories = useApiResource<SubcategoriesResponse>("/subcategories");
-  const analytics = useApiResource<AnalyticsSummaryResponse>("/analytics/summary");
-  const feedbackItems = useApiResource<FeedbackResponse>("/feedback?limit=5");
+  const sessions = useApiResource<SessionsResponse>("/settings/sessions");
   const { showToast } = useToast();
+
+  // Profile form
+  const [profileName, setProfileName] = useState("");
+  const [profileLocale, setProfileLocale] = useState("");
+  const [profileDirty, setProfileDirty] = useState(false);
+  const [profileFeedback, setProfileFeedback] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  // Password form
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordFeedback, setPasswordFeedback] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  // Preferences form
+  const [prefCurrency, setPrefCurrency] = useState(() =>
+    readStoredPreference("currency", "BRL")
+  );
+  const [prefDateFormat, setPrefDateFormat] = useState(() =>
+    readStoredPreference("dateFormat", "DD/MM/YYYY")
+  );
+  const [prefFeedback, setPrefFeedback] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  // CRUD forms
   const [accountForm, setAccountForm] = useState(emptyAccountForm);
   const [categoryForm, setCategoryForm] = useState(emptyCategoryForm);
   const [subcategoryForm, setSubcategoryForm] = useState(emptySubcategoryForm);
@@ -76,35 +159,140 @@ export function SettingsClientPage() {
   const [isPending, startTransition] = useTransition();
 
   const loading =
-    settings.loading ||
-    accounts.loading ||
-    categories.loading ||
-    subcategories.loading ||
-    analytics.loading ||
-    feedbackItems.loading;
-  const error =
-    settings.error ??
-    accounts.error ??
-    categories.error ??
-    subcategories.error ??
-    analytics.error ??
-    feedbackItems.error;
-  const runtime = settings.data?.runtime;
-  const analyticsMap = new Map(
-    (analytics.data?.events ?? []).map((item) => [item.name, item])
-  );
+    settings.loading || accounts.loading || categories.loading || subcategories.loading;
+  const error = settings.error ?? accounts.error ?? categories.error ?? subcategories.error;
+
+  // Sync profile form when settings load
+  const profile = settings.data?.profile;
+  if (profile && !profileDirty && profileName === "" && profileLocale === "") {
+    setProfileName(profile.fullName);
+    setProfileLocale(profile.locale);
+  }
 
   async function refreshAll() {
     await Promise.all([
       settings.reload(),
       accounts.reload(),
       categories.reload(),
-      subcategories.reload(),
-      analytics.reload(),
-      feedbackItems.reload()
+      subcategories.reload()
     ]);
     notifyDataChanged();
   }
+
+  // ── Profile ──
+
+  function submitProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setProfileFeedback(null);
+
+    startTransition(() => {
+      void apiRequest<ProfileUpdateResponse>("/settings/profile", {
+        method: "PATCH",
+        body: {
+          fullName: profileName,
+          locale: profileLocale
+        }
+      })
+        .then(async (response) => {
+          setProfileFeedback({ tone: "success", message: response.message });
+          setProfileDirty(false);
+          showToast({ tone: "success", message: response.message });
+          await settings.reload();
+          notifyDataChanged();
+        })
+        .catch((requestError) => {
+          const message = readApiError(requestError);
+          setProfileFeedback({ tone: "error", message });
+        });
+    });
+  }
+
+  // ── Password ──
+
+  function submitPassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPasswordFeedback(null);
+
+    if (newPassword.length < 8) {
+      setPasswordFeedback({
+        tone: "error",
+        message: "A nova senha precisa ter pelo menos 8 caracteres."
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordFeedback({
+        tone: "error",
+        message: "As senhas digitadas nao coincidem."
+      });
+      return;
+    }
+
+    startTransition(() => {
+      void apiRequest<PasswordChangeResponse>("/settings/password", {
+        method: "POST",
+        body: { currentPassword, newPassword }
+      })
+        .then((response) => {
+          setPasswordFeedback({ tone: "success", message: response.message });
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+          showToast({ tone: "success", message: response.message });
+          void sessions.reload();
+        })
+        .catch((requestError) => {
+          const message = readApiError(requestError);
+          setPasswordFeedback({ tone: "error", message });
+        });
+    });
+  }
+
+  // ── Sessions ──
+
+  function revokeOtherSessions() {
+    if (!window.confirm("Encerrar todas as outras sessoes ativas?")) return;
+
+    startTransition(() => {
+      void apiRequest<{ success: boolean; message: string }>("/settings/sessions/revoke-others", {
+        method: "POST"
+      })
+        .then((response) => {
+          showToast({ tone: "success", message: response.message });
+          void sessions.reload();
+        })
+        .catch((requestError) => {
+          showToast({ tone: "error", message: readApiError(requestError) });
+        });
+    });
+  }
+
+  // ── Preferences ──
+
+  function submitPreferences(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPrefFeedback(null);
+
+    startTransition(() => {
+      void apiRequest<PreferencesResponse>("/settings/preferences", {
+        method: "PATCH",
+        body: { currency: prefCurrency, dateFormat: prefDateFormat }
+      })
+        .then((response) => {
+          storePreference("currency", response.preferences.currency);
+          storePreference("dateFormat", response.preferences.dateFormat);
+          setPrefFeedback({ tone: "success", message: response.message });
+          showToast({ tone: "success", message: response.message });
+        })
+        .catch((requestError) => {
+          const message = readApiError(requestError);
+          setPrefFeedback({ tone: "error", message });
+        });
+    });
+  }
+
+  // ── Account / Category / Subcategory CRUD ──
 
   function resetAccountForm() {
     setAccountForm(emptyAccountForm);
@@ -269,17 +457,13 @@ export function SettingsClientPage() {
   }
 
   function archiveAccount(id: string) {
-    if (!window.confirm("Arquivar esta conta?")) {
-      return;
-    }
+    if (!window.confirm("Arquivar esta conta?")) return;
 
     startTransition(() => {
       void apiRequest(`/accounts/${id}`, { method: "DELETE" })
         .then(async () => {
           await refreshAll();
-          if (editingAccountId === id) {
-            resetAccountForm();
-          }
+          if (editingAccountId === id) resetAccountForm();
           showToast({ tone: "success", message: "Conta arquivada." });
         })
         .catch((requestError) => {
@@ -289,17 +473,13 @@ export function SettingsClientPage() {
   }
 
   function archiveCategory(id: string) {
-    if (!window.confirm("Arquivar esta categoria e suas subcategorias?")) {
-      return;
-    }
+    if (!window.confirm("Arquivar esta categoria e suas subcategorias?")) return;
 
     startTransition(() => {
       void apiRequest(`/categories/${id}`, { method: "DELETE" })
         .then(async () => {
           await refreshAll();
-          if (editingCategoryId === id) {
-            resetCategoryForm();
-          }
+          if (editingCategoryId === id) resetCategoryForm();
           showToast({ tone: "success", message: "Categoria arquivada." });
         })
         .catch((requestError) => {
@@ -309,38 +489,17 @@ export function SettingsClientPage() {
   }
 
   function archiveSubcategory(id: string) {
-    if (!window.confirm("Arquivar esta subcategoria?")) {
-      return;
-    }
+    if (!window.confirm("Arquivar esta subcategoria?")) return;
 
     startTransition(() => {
       void apiRequest(`/subcategories/${id}`, { method: "DELETE" })
         .then(async () => {
           await refreshAll();
-          if (editingSubcategoryId === id) {
-            resetSubcategoryForm();
-          }
+          if (editingSubcategoryId === id) resetSubcategoryForm();
           showToast({ tone: "success", message: "Subcategoria arquivada." });
         })
         .catch((requestError) => {
           showToast({ tone: "error", message: readApiError(requestError) });
-        });
-    });
-  }
-
-  function sendEmailTest() {
-    startTransition(() => {
-      void apiRequest<{ success: true; message: string }>("/settings/diagnostics/email-test", {
-        method: "POST"
-      })
-        .then((result) => {
-          setFeedback({ tone: "success", message: result.message });
-          showToast({ tone: "success", message: result.message });
-        })
-        .catch((requestError) => {
-          const message = readApiError(requestError);
-          setFeedback({ tone: "error", message });
-          showToast({ tone: "error", message });
         });
     });
   }
@@ -354,9 +513,7 @@ export function SettingsClientPage() {
     !settings.data ||
     !accounts.data ||
     !categories.data ||
-    !subcategories.data ||
-    !analytics.data ||
-    !feedbackItems.data
+    !subcategories.data
   ) {
     return (
       <div className="page-grid">
@@ -368,226 +525,180 @@ export function SettingsClientPage() {
     );
   }
 
+  const sessionItems = sessions.data?.sessions ?? [];
+  const otherSessionCount = sessionItems.filter((s) => !s.isCurrent).length;
+
   return (
     <div className="page-grid">
       <PageIntro
         eyebrow="Configuracoes"
-        title="Base da sua conta pessoal"
-        description="Ajuste contas, categorias e subcategorias para deixar o uso diario rapido, limpo e consistente."
-        actions={<div className="hero-chip">Conta individual</div>}
+        title="Sua conta"
+        description="Gerencie seu perfil, seguranca, preferencias e estrutura financeira."
       />
 
-      {feedback ? <FeedbackBanner tone={feedback.tone} message={feedback.message} /> : null}
-
+      {/* ── Profile + Password ── */}
       <div className="two-column">
-        <SectionCard title="Perfil da conta" subtitle="Quem esta usando e como a base foi preparada">
-          <div className="profile-grid">
-            <div className="profile-row">
-              <span>Nome</span>
-              <strong>{settings.data.profile.fullName}</strong>
+        <SectionCard title="Perfil" subtitle="Seus dados pessoais">
+          <form className="editor-form" onSubmit={submitProfile}>
+            <div className="form-grid">
+              <InputField
+                label="Nome completo"
+                value={profileName}
+                onChange={(event) => {
+                  setProfileName(event.target.value);
+                  setProfileDirty(true);
+                }}
+                required
+                minLength={3}
+                aria-label="Nome completo"
+              />
+              <SelectField
+                label="Idioma"
+                value={profileLocale}
+                onChange={(event) => {
+                  setProfileLocale(event.target.value);
+                  setProfileDirty(true);
+                }}
+                options={localeOptions}
+                aria-label="Idioma da conta"
+              />
+              <InputField
+                label="E-mail"
+                value={profile?.email ?? ""}
+                disabled
+                hint="O e-mail nao pode ser alterado"
+                aria-label="E-mail da conta"
+              />
             </div>
-            <div className="profile-row">
-              <span>E-mail</span>
-              <strong>{settings.data.profile.email}</strong>
-            </div>
-            <div className="profile-row">
-              <span>Idioma</span>
-              <strong>{settings.data.profile.locale}</strong>
-            </div>
-            <div className="profile-row">
-              <span>Contas cadastradas</span>
-              <strong>{accounts.data.items.length}</strong>
-            </div>
-            <div className="profile-row">
-              <span>Categorias ativas</span>
-              <strong>{categories.data.items.length}</strong>
-            </div>
-            <div className="profile-row">
-              <span>Subcategorias ativas</span>
-              <strong>{subcategories.data.items.length}</strong>
-            </div>
-          </div>
+
+            {profileFeedback ? (
+              <FeedbackBanner tone={profileFeedback.tone} message={profileFeedback.message} />
+            ) : null}
+
+            <FormActions submitLabel="Salvar perfil" pending={isPending} />
+          </form>
         </SectionCard>
 
+        <SectionCard title="Senha" subtitle="Altere sua senha de acesso">
+          <form className="editor-form" onSubmit={submitPassword}>
+            <div className="form-grid">
+              <InputField
+                label="Senha atual"
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                required
+                autoComplete="current-password"
+                aria-label="Senha atual"
+              />
+              <InputField
+                label="Nova senha"
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                required
+                minLength={8}
+                hint="Minimo 8 caracteres"
+                autoComplete="new-password"
+                aria-label="Nova senha"
+              />
+              <InputField
+                label="Confirmar nova senha"
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                required
+                minLength={8}
+                autoComplete="new-password"
+                aria-label="Confirmar nova senha"
+              />
+            </div>
+
+            {passwordFeedback ? (
+              <FeedbackBanner tone={passwordFeedback.tone} message={passwordFeedback.message} />
+            ) : null}
+
+            <FormActions submitLabel="Alterar senha" pending={isPending} />
+          </form>
+        </SectionCard>
+      </div>
+
+      {/* ── Security + Preferences ── */}
+      <div className="two-column">
         <SectionCard
-          title="Ambiente beta"
-          subtitle="O que ja esta pronto para uso real e o que ainda merece atencao"
+          title="Seguranca"
+          subtitle="Sessoes ativas na sua conta"
           actions={
-            runtime?.email.canSendTestEmail ? (
-              <button type="button" className="ghost-button" onClick={sendEmailTest} disabled={isPending}>
-                {isPending ? "Testando..." : "Enviar teste para meu e-mail"}
+            otherSessionCount > 0 ? (
+              <button
+                type="button"
+                className="danger-button"
+                onClick={revokeOtherSessions}
+                disabled={isPending}
+                aria-label="Encerrar outras sessoes"
+              >
+                Encerrar outras sessoes
               </button>
             ) : null
           }
         >
-          {runtime ? (
+          {sessions.loading ? (
+            <p className="muted-text">Carregando sessoes...</p>
+          ) : sessionItems.length === 0 ? (
+            <p className="muted-text">Nenhuma sessao ativa encontrada.</p>
+          ) : (
             <div className="stack-list">
-              <div className="stack-row">
-                <div className="stack-head">
-                  <strong>Envio transacional</strong>
-                  <span>{runtime.email.canSendRealEmail ? "SMTP real ativo" : "Modo de desenvolvimento"}</span>
-                </div>
-                <p>
-                  Canal ativo: {runtime.email.resolvedProvider}. Remetente: {runtime.email.fromAddress}.
-                </p>
-              </div>
-              <div className="stack-row">
-                <div className="stack-head">
-                  <strong>Sessao e cookies</strong>
-                  <span>{runtime.session.cookieSecure ? "Seguro" : "Modo local"}</span>
-                </div>
-                <p>
-                  SameSite {runtime.session.sameSite} · dominio{" "}
-                  {runtime.session.cookieDomain ?? "host atual"} · proxy {runtime.session.proxyMode}.
-                </p>
-              </div>
-              <div className="stack-row">
-                <div className="stack-head">
-                  <strong>Monitoramento</strong>
-                  <span>{runtime.monitoring.enabled ? "Externo ativo" : "Logs locais"}</span>
-                </div>
-                <p>{runtime.monitoring.targetLabel}.</p>
-              </div>
-              <div className="stack-row">
-                <div className="stack-head">
-                  <strong>Canal de feedback beta</strong>
-                  <span>{runtime.feedback.relayMode}</span>
-                </div>
-                <p>{runtime.feedback.targetLabel}.</p>
-              </div>
-              {runtime.warnings.length > 0 ? (
-                <div className="soft-empty warning-soft">
-                  <strong>Pontos antes de abrir o beta</strong>
-                  <div className="warning-list">
-                    {runtime.warnings.map((warning) => (
-                      <p key={warning}>{warning}</p>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="soft-empty">
-                  <strong>Base operacional pronta.</strong>
-                  <p>Dominio, sessao e canais essenciais ja estao coerentes para um beta controlado.</p>
-                </div>
-              )}
-              <div className="soft-empty">
-                <strong>Teste de e-mail</strong>
-                <p>
-                  Use o botao acima para validar entrega. Se necessario, confira spam e lixo
-                  eletronico. Quando `SMTP_VERIFY_CONNECTION=true`, a API valida a conexao no boot.
-                </p>
-              </div>
-            </div>
-          ) : null}
-        </SectionCard>
-      </div>
-
-      <div className="two-column">
-        <SectionCard
-          title="Sinais do beta"
-          subtitle="Eventos basicos para acompanhar ativacao e uso inicial"
-        >
-          <div className="stack-list">
-            {[
-              "REGISTER_COMPLETED",
-              "LOGIN_COMPLETED",
-              "DASHBOARD_FIRST_VIEWED",
-              "FIRST_ACCOUNT_CREATED",
-              "FIRST_INCOME_CREATED",
-              "FIRST_EXPENSE_CREATED",
-              "FIRST_GOAL_CREATED",
-              "PASSWORD_RESET_REQUESTED",
-              "FEEDBACK_SUBMITTED"
-            ].map((eventName) => {
-              const item = analyticsMap.get(eventName);
-
-              return (
-                <div key={eventName} className="stack-row">
+              {sessionItems.map((session) => (
+                <div key={session.id} className="stack-row">
                   <div className="stack-head">
-                    <strong>{item?.label ?? eventName}</strong>
-                    <span>{item?.count ?? 0}</span>
+                    <strong>
+                      {summarizeUserAgent(session.userAgent)}
+                      {session.isCurrent ? " (esta sessao)" : ""}
+                    </strong>
+                    <span>{session.ipAddress ?? "IP desconhecido"}</span>
                   </div>
                   <p>
-                    {item?.lastOccurredAt
-                      ? `Ultimo registro em ${new Date(item.lastOccurredAt).toLocaleString("pt-BR")}.`
-                      : "Ainda nao ocorreu nesta conta."}
+                    Ultimo acesso em {formatSessionDate(session.lastSeenAt)} · criada em{" "}
+                    {formatSessionDate(session.createdAt)}
                   </p>
-                </div>
-              );
-            })}
-          </div>
-
-          {analytics.data.onboarding.isStalled ? (
-            <div className="soft-empty warning-soft">
-              <strong>Onboarding com atrito detectado</strong>
-              <p>
-                Etapas pendentes: {analytics.data.onboarding.remainingSteps.join(", ") || "sem detalhe"}.
-              </p>
-            </div>
-          ) : (
-            <div className="soft-empty">
-              <strong>Onboarding sem sinal de abandono.</strong>
-              <p>Enquanto os passos avancam cedo, a base fica mais preparada para o beta pequeno.</p>
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard
-          title="Feedback recente"
-          subtitle="Os ultimos relatos enviados por esta conta beta"
-        >
-          {feedbackItems.data.items.length > 0 ? (
-            <div className="stack-list">
-              {feedbackItems.data.items.map((item) => (
-                <div key={item.id} className="stack-row">
-                  <div className="stack-head">
-                    <strong>{item.category}</strong>
-                    <span>{item.status}</span>
-                  </div>
-                  <p>{item.message}</p>
-                  <div className="tag-list">
-                    {item.pagePath ? <span className="tag-chip">{item.pagePath}</span> : null}
-                    <span className="tag-chip">
-                      {new Date(item.createdAt).toLocaleString("pt-BR")}
-                    </span>
-                  </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <EmptyState
-              title="Nenhum feedback enviado ainda"
-              description="Use o botao discreto no canto da tela para relatar friccao, bug ou sugestao."
-              cta="Coleta de feedback ativa"
-            />
           )}
+        </SectionCard>
+
+        <SectionCard title="Preferencias" subtitle="Moeda e formato de data">
+          <form className="editor-form" onSubmit={submitPreferences}>
+            <div className="form-grid">
+              <SelectField
+                label="Moeda"
+                value={prefCurrency}
+                onChange={(event) => setPrefCurrency(event.target.value)}
+                options={currencyOptions}
+                aria-label="Moeda padrao"
+              />
+              <SelectField
+                label="Formato de data"
+                value={prefDateFormat}
+                onChange={(event) => setPrefDateFormat(event.target.value)}
+                options={dateFormatOptions}
+                aria-label="Formato de data"
+              />
+            </div>
+
+            {prefFeedback ? (
+              <FeedbackBanner tone={prefFeedback.tone} message={prefFeedback.message} />
+            ) : null}
+
+            <FormActions submitLabel="Salvar preferencias" pending={isPending} />
+          </form>
         </SectionCard>
       </div>
 
-      <div className="two-column">
-        <SectionCard title="Integracoes e roadmap" subtitle="O que ja esta pronto e o que ainda fica protegido">
-          <div className="stack-list">
-            {settings.data.integrations.map((integration) => (
-              <div key={integration} className="stack-row">
-                <div className="stack-head">
-                  <strong>{integration}</strong>
-                  <span>
-                    {featureFlags.imports || featureFlags.openFinance ? "Preparado" : "Em breve"}
-                  </span>
-                </div>
-                <p>Fluxo isolado por feature flag para manter o app simples nesta fase.</p>
-              </div>
-            ))}
-          </div>
-          <div className="soft-empty">
-            <strong>Base fiscal em preparacao.</strong>
-            <p>
-              {settings.data.fiscalReadiness.deductibleGroups.length} grupos dedutiveis mapeados.
-              Modo de exportacao: {settings.data.fiscalReadiness.exportMode}.
-            </p>
-          </div>
-        </SectionCard>
+      {feedback ? <FeedbackBanner tone={feedback.tone} message={feedback.message} /> : null}
 
+      {/* ── Accounts + Categories ── */}
+      <div className="two-column">
         <SectionCard title={editingAccountId ? "Editar conta" : "Nova conta"} subtitle="Contas e saldos iniciais">
           <form className="editor-form" onSubmit={submitAccount}>
             <div className="form-grid">
@@ -768,6 +879,7 @@ export function SettingsClientPage() {
         </SectionCard>
       </div>
 
+      {/* ── Subcategories ── */}
       <div className="two-column">
         <SectionCard title={editingSubcategoryId ? "Editar subcategoria" : "Nova subcategoria"} subtitle="Detalhe fino para transacoes e orcamentos">
           <form className="editor-form" onSubmit={submitSubcategory}>
@@ -876,42 +988,6 @@ export function SettingsClientPage() {
               </div>
             ))}
           </div>
-        </SectionCard>
-
-        <SectionCard title="Preparo fiscal e operacional" subtitle="Leituras simples para o beta">
-          <div className="stack-list">
-            <div className="stack-row">
-              <div className="stack-head">
-                <strong>Dedutiveis mapeados</strong>
-                <span>{settings.data.fiscalReadiness.deductibleGroups.length}</span>
-              </div>
-              <p>Use essas tags quando o modulo fiscal for aberto no app.</p>
-            </div>
-            <div className="stack-row">
-              <div className="stack-head">
-                <strong>Exportacao fiscal</strong>
-                <span>{settings.data.fiscalReadiness.exportMode}</span>
-              </div>
-              <p>Permanece protegida enquanto o fluxo fiscal nao entra no escopo do beta.</p>
-            </div>
-            <div className="stack-row">
-              <div className="stack-head">
-                <strong>Saldo inicial total</strong>
-                <span>
-                  {formatCurrency(
-                    accounts.data.items.reduce((sum, account) => sum + account.openingBalance, 0)
-                  )}
-                </span>
-              </div>
-              <p>Referencia util para revisar se o setup inicial esta coerente.</p>
-            </div>
-          </div>
-
-          <EmptyState
-            title="Estrutura pronta para uso diario"
-            description="Depois de ajustar contas, categorias e subcategorias, o restante do app tende a ficar bem mais rapido de alimentar."
-            cta="Continuar configurando"
-          />
         </SectionCard>
       </div>
     </div>

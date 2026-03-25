@@ -29,13 +29,13 @@ export function ReportsClientPage() {
       <div className="page-grid">
         <PageIntro
           eyebrow="Relatorios"
-          title="Ainda nao ha leitura consolidada"
-          description="Os relatorios aparecem conforme voce alimenta transacoes, patrimonio e metas."
+          title="Nenhum relatorio disponivel"
+          description="Os relatorios sao gerados a partir das suas transacoes, metas e patrimonio."
         />
         <EmptyModuleState
-          title="Modulo analitico vazio"
-          description="Cadastre mais movimentos para liberar comparativos e distribuicao de gastos."
-          cta="Voltar ao dashboard"
+          title="Sem dados suficientes"
+          description="Registre mais movimentacoes para gerar comparativos e distribuicao de gastos."
+          cta="Ir para transacoes"
         />
       </div>
     );
@@ -45,8 +45,8 @@ export function ReportsClientPage() {
     <div className="page-grid">
       <PageIntro
         eyebrow="Relatorios"
-        title="Leituras claras para decidir melhor"
-        description="Resumo do periodo, concentracao de gastos, fluxo mensal e score mais recente."
+        title="Seus relatorios"
+        description="Resumo do periodo, gastos por categoria, fluxo mensal e score financeiro."
       />
 
       <SectionCard title="Resumo do periodo" subtitle="O essencial em uma tabela objetiva">
@@ -105,8 +105,8 @@ export function ReportsClientPage() {
           </div>
         ) : (
           <div className="soft-empty">
-            <strong>Score ainda indisponivel.</strong>
-            <p>Ele aparece quando o historico for alimentado no banco.</p>
+            <strong>Score ainda indisponivel</strong>
+            <p>O score e calculado a partir do seu historico de movimentacoes.</p>
           </div>
         )}
       </SectionCard>

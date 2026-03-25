@@ -63,18 +63,18 @@ export function ResetPasswordClientPage() {
         <span className="eyebrow">Nova senha</span>
         <h1>Definir nova senha</h1>
         <p>
-          Crie uma nova senha forte para voltar a acessar sua conta com seguranca. O link expira
-          automaticamente para evitar reutilizacao indevida.
+          Escolha uma nova senha para acessar sua conta.
         </p>
       </div>
 
-      <form className="editor-form" onSubmit={handleSubmit}>
+      <form className="editor-form" onSubmit={handleSubmit} aria-label="Formulario de nova senha">
         <InputField
           label="Nova senha"
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           required
+          autoComplete="new-password"
         />
         <InputField
           label="Confirmar nova senha"
@@ -82,6 +82,7 @@ export function ResetPasswordClientPage() {
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
           required
+          autoComplete="new-password"
         />
 
         {feedback ? <FeedbackBanner tone={feedback.tone} message={feedback.message} /> : null}
