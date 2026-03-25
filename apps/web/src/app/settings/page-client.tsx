@@ -191,13 +191,19 @@ export function SettingsClientPage() {
 
   useEffect(() => {
     if (!settings.data || notifHydratedFromServer) return;
-    const notificationPreferences = settings.data.notificationPreferences;
+    const notificationPreferences = settings.data.notificationPreferences ?? {
+      emailAlerts: notifEmailAlerts,
+      weeklyDigest: notifWeeklyDigest,
+      dueDateReminders: notifDueDate,
+      budgetAlerts: notifBudget,
+      pushEnabled: false
+    };
     setNotifEmailAlerts(notificationPreferences.emailAlerts);
     setNotifWeeklyDigest(notificationPreferences.weeklyDigest);
     setNotifDueDate(notificationPreferences.dueDateReminders);
     setNotifBudget(notificationPreferences.budgetAlerts);
     setNotifHydratedFromServer(true);
-  }, [notifHydratedFromServer, settings.data]);
+  }, [notifBudget, notifDueDate, notifEmailAlerts, notifHydratedFromServer, notifWeeklyDigest, settings.data]);
 
   async function refreshAll() {
     await Promise.all([
