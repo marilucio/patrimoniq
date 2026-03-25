@@ -57,6 +57,16 @@ interface NotificationDispatchRecord {
   updatedAt: Date;
 }
 
+interface EmailCandidate {
+  alert: AlertEmailCandidate;
+  email: {
+    type: NotificationPayload["type"];
+    eventType: NotificationEventType;
+    data: Record<string, unknown>;
+  };
+  rank: number;
+}
+
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
@@ -119,6 +129,17 @@ export class NotificationService {
               failureCode?: string | null;
             };
           }) => Promise<NotificationDispatchRecord>;
+        count: (args: {
+          where: {
+            userId: string;
+            channel: NotificationDeliveryChannel;
+            status: NotificationDispatchStatus;
+            createdAt: {
+              gte: Date;
+              lte: Date;
+            };
+          };
+        }) => Promise<number>;
         };
       }
     ).notificationDispatch;
@@ -188,9 +209,27 @@ export class NotificationService {
     let sent = 0;
     const dayBucket = this.dayBucket(now);
 
-    for (const alert of input.alerts) {
-      const email = this.buildAlertEmailPayload(input.userId, alert);
-      if (!email) continue;
+    const prioritizedCandidates = input.alerts
+      .map((alert) => {
+        const email = this.buildAlertEmailPayload(input.userId, alert);
+        if (!email) return null;
+        return {
+          alert,
+          email,
+          rank: this.eventPriorityRank(email.eventType)
+        } as EmailCandidate;
+      })
+      .filter((candidate): candidate is EmailCandidate => candidate !== null)
+      .sort((left, right) => right.rank - left.rank);
+    const dailyLimit = Number(process.env.NOTIFICATIONS_EMAIL_DAILY_LIMIT ?? 3);
+    const maxDaily = Number.isFinite(dailyLimit) && dailyLimit > 0 ? dailyLimit : 3;
+    const sentToday = await this.countSentToday(input.userId, now);
+    const remainingCapacity = Math.max(maxDaily - sentToday, 0);
+    const candidates = prioritizedCandidates.slice(0, remainingCapacity);
+
+    for (const candidate of candidates) {
+      const alert = candidate.alert;
+      const email = candidate.email;
 
       if (
         (email.eventType === "BILL_DUE" ||
@@ -565,5 +604,33 @@ export class NotificationService {
 
   private formatMoney(value: number) {
     return value.toFixed(2);
+  }
+
+  private eventPriorityRank(eventType: NotificationEventType) {
+    if (eventType === "BILL_OVERDUE") return 100;
+    if (eventType === "BUDGET_EXCEEDED") return 90;
+    if (eventType === "BILL_DUE") return 80;
+    if (eventType === "BUDGET_NEAR_LIMIT") return 70;
+    return 60;
+  }
+
+  private async countSentToday(userId: string, now: Date) {
+    const start = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)
+    );
+    const end = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999)
+    );
+    return this.notificationDispatchStore().count({
+      where: {
+        userId,
+        channel: "EMAIL",
+        status: "SENT",
+        createdAt: {
+          gte: start,
+          lte: end
+        }
+      }
+    });
   }
 }

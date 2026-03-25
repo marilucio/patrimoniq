@@ -405,6 +405,7 @@ export interface AlertItem {
     whyItMatters: string;
     whatToDoNow: string;
     reviewAt: string;
+    impactEstimate?: string;
   } | null;
   isRead: boolean;
   triggerDate: string;
@@ -468,6 +469,53 @@ export interface DashboardResponse {
     title: string;
     description: string;
   }>;
+  advisor: {
+    priorityOfWeek: {
+      id: string;
+      title: string;
+      route: string;
+      cta: string;
+      dueDate: string | null;
+      score: number;
+    };
+    mainAttention: string;
+    shortTermActions: Array<{
+      id: string;
+      title: string;
+      reason: string;
+      route: string;
+      cta: string;
+      dueDate: string | null;
+      score: number;
+      impactEstimate: string;
+    }>;
+    riskSummary: {
+      level: "baixo" | "moderado" | "alto" | "critico";
+      score: number;
+      label: string;
+      description: string;
+    };
+    monthlyActionPlan: {
+      title: string;
+      subtitle: string;
+      actions: Array<{
+        id: string;
+        title: string;
+        reason: string;
+        route: string;
+        cta: string;
+        dueDate: string | null;
+        score: number;
+        impactEstimate: string;
+      }>;
+    };
+    routine: {
+      weeklyPriority: string;
+      monthReview: string;
+      goalConsistency: string;
+      followUpReminder: string;
+    };
+  };
 }
 
 export interface AnalyticsSummaryResponse {

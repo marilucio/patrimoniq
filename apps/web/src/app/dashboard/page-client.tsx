@@ -42,6 +42,9 @@ function AlertsStrip(props: {
                 <p><strong>Por que importa:</strong> {alert.recommendation.whyItMatters}</p>
                 <p><strong>O que fazer agora:</strong> {alert.recommendation.whatToDoNow}</p>
                 <p><strong>Revisar novamente:</strong> {alert.recommendation.reviewAt}</p>
+                {alert.recommendation.impactEstimate ? (
+                  <p><strong>Impacto estimado:</strong> {alert.recommendation.impactEstimate}</p>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -163,6 +166,91 @@ function DashboardGuideCard(props: { guide: string[] }) {
   );
 }
 
+function AdvisorActionPlanCard(props: {
+  advisor: DashboardResponse["advisor"];
+  onTrackInteraction: (id: string, kind: "open" | "done", route: string) => void;
+}) {
+  return (
+    <SectionCard
+      title={props.advisor.monthlyActionPlan.title}
+      subtitle={props.advisor.monthlyActionPlan.subtitle}
+      className="subtle-card"
+    >
+      <div className="advisor-strip">
+        <article className={`advisor-risk ${props.advisor.riskSummary.level}`}>
+          <strong>{props.advisor.riskSummary.label}</strong>
+          <p>{props.advisor.riskSummary.description}</p>
+          <span>Score de risco: {props.advisor.riskSummary.score}/100</span>
+        </article>
+        <article className="advisor-priority">
+          <strong>Prioridade da semana</strong>
+          <p>{props.advisor.priorityOfWeek.title}</p>
+          <span>Principal atencao: {props.advisor.mainAttention}</span>
+        </article>
+      </div>
+
+      <div className="stack-list">
+        {props.advisor.monthlyActionPlan.actions.map((action) => (
+          <article key={action.id} className="stack-row advisor-action-row">
+            <div className="stack-head">
+              <strong>{action.title}</strong>
+              <span>Prioridade {action.score}</span>
+            </div>
+            <p>{action.reason}</p>
+            <p>{action.impactEstimate}</p>
+            {action.dueDate ? <p>Revisar em {action.dueDate}</p> : null}
+            <div className="alert-actions">
+              <Link
+                href={action.route}
+                className="inline-link"
+                onClick={() => props.onTrackInteraction(action.id, "open", action.route)}
+              >
+                {action.cta}
+              </Link>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => props.onTrackInteraction(action.id, "done", action.route)}
+              >
+                Marcar como concluido
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
+
+function AdvisorRoutineCard(props: { routine: DashboardResponse["advisor"]["routine"] }) {
+  return (
+    <SectionCard
+      title="Rotina financeira"
+      subtitle="Ritmo leve para manter consistencia"
+      className="subtle-card"
+    >
+      <div className="guide-list">
+        <article className="guide-row">
+          <span className="guide-dot" />
+          <p><strong>Prioridade da semana:</strong> {props.routine.weeklyPriority}</p>
+        </article>
+        <article className="guide-row">
+          <span className="guide-dot" />
+          <p><strong>Revisao do mes:</strong> {props.routine.monthReview}</p>
+        </article>
+        <article className="guide-row">
+          <span className="guide-dot" />
+          <p><strong>Consistencia de metas:</strong> {props.routine.goalConsistency}</p>
+        </article>
+        <article className="guide-row">
+          <span className="guide-dot" />
+          <p><strong>Lembrete:</strong> {props.routine.followUpReminder}</p>
+        </article>
+      </div>
+    </SectionCard>
+  );
+}
+
 export function DashboardClientPage() {
   const { data, loading, error } = useApiResource<DashboardResponse>("/dashboard/overview");
   const alerts = useApiResource<AlertsResponse>("/alerts");
@@ -190,6 +278,15 @@ export function DashboardClientPage() {
     startTransition(() => {
       void apiRequest(`/alerts/${id}/acknowledge`, { method: "POST" }).then(() => {
         void alerts.reload();
+      });
+    });
+  }
+
+  function trackActionPlanInteraction(id: string, kind: "open" | "done", route: string) {
+    startTransition(() => {
+      void apiRequest(`/dashboard/action-plan/${encodeURIComponent(id)}/interaction`, {
+        method: "POST",
+        body: { kind, route }
       });
     });
   }
@@ -247,6 +344,14 @@ export function DashboardClientPage() {
         onDismiss={dismissAlert}
         onAcknowledge={acknowledgeAlert}
       />
+
+      <div className="two-column">
+        <AdvisorActionPlanCard
+          advisor={data.advisor}
+          onTrackInteraction={trackActionPlanInteraction}
+        />
+        <AdvisorRoutineCard routine={data.advisor.routine} />
+      </div>
 
       <section className="dashboard-hero">
         <div className="dashboard-balance">

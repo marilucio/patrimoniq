@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { AuthenticatedRequestContext } from "../../common/auth.types";
+import { EngagementAnalyticsService } from "../../common/engagement-analytics.service";
 import {
   endOfMonth,
   isInflow,
@@ -17,8 +18,28 @@ export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly netWorthSnapshots: NetWorthSnapshotsService,
-    private readonly analytics: ProductAnalyticsService
+    private readonly analytics: ProductAnalyticsService,
+    private readonly engagementAnalytics: EngagementAnalyticsService
   ) {}
+
+  async registerActionPlanInteraction(
+    auth: AuthenticatedRequestContext,
+    actionId: string,
+    input?: { kind?: "open" | "done" | "dismiss"; route?: string }
+  ) {
+    const kind = input?.kind ?? "done";
+    await this.engagementAnalytics.record({
+      userId: auth.userId,
+      sessionId: auth.sessionId,
+      source: "dashboard_action_plan",
+      eventName: `action_${kind}`,
+      metadata: {
+        actionId,
+        route: input?.route ?? null
+      }
+    });
+    return { success: true };
+  }
 
   async getOverview(auth: AuthenticatedRequestContext) {
     const now = new Date();
@@ -26,7 +47,7 @@ export class DashboardService {
     const monthEnd = endOfMonth(now);
     const rangeStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-    const [user, transactions, goals, totals, budgets, accountsCount, categoriesCount, totalGoalsCount] =
+    const [user, transactions, goals, totals, budgets, accountsCount, categoriesCount, totalGoalsCount, activeAlerts] =
       await Promise.all([
         this.prisma.user.findUniqueOrThrow({
           where: {
@@ -88,6 +109,14 @@ export class DashboardService {
           where: {
             userId: auth.userId
           }
+        }),
+        this.prisma.alert.findMany({
+          where: {
+            userId: auth.userId,
+            dismissedAt: null
+          },
+          orderBy: [{ severity: "desc" }, { triggerDate: "desc" }],
+          take: 20
         })
       ]);
 
@@ -129,6 +158,13 @@ export class DashboardService {
     const topCategory = [...categoryTotals.entries()].sort((a, b) => b[1] - a[1])[0];
     const totalBudget = budgets.reduce((sum, budget) => sum + toNumber(budget.amountLimit), 0);
     const currentBudgetUsage = totalBudget > 0 ? expenses / totalBudget : 0;
+    const advisor = this.buildAdvisor({
+      now,
+      leftover,
+      currentBudgetUsage,
+      goals,
+      alerts: activeAlerts
+    });
     const firstName = auth.fullName.split(" ")[0] ?? auth.fullName;
     const incomeTransactionsCount = transactions.filter(
       (transaction) => transaction.status !== "CANCELED" && isInflow(transaction.type)
@@ -221,6 +257,18 @@ export class DashboardService {
       });
     }
 
+    await this.engagementAnalytics.record({
+      userId: auth.userId,
+      sessionId: auth.sessionId,
+      source: "dashboard_advisor",
+      eventName: "advisor_viewed",
+      metadata: {
+        priorityKey: advisor.priorityOfWeek.id,
+        riskLevel: advisor.riskSummary.level,
+        actionsCount: advisor.shortTermActions.length
+      }
+    });
+
     return {
       userName: firstName,
       referenceMonth: monthLabel(now),
@@ -269,8 +317,210 @@ export class DashboardService {
         topCategory,
         totalBudget,
         currentBudgetUsage
-      })
+      }),
+      advisor
     };
+  }
+
+  private buildAdvisor(input: {
+    now: Date;
+    leftover: number;
+    currentBudgetUsage: number;
+    goals: Array<{
+      id: string;
+      name: string;
+      targetAmount: { toString(): string } | number | string;
+      currentAmount: { toString(): string } | number | string;
+    }>;
+    alerts: Array<{
+      id: string;
+      type: string;
+      severity: string;
+      title: string;
+      actionRoute: string | null;
+      actionLabel: string | null;
+      metadata: unknown;
+    }>;
+  }) {
+    const actionable = input.alerts
+      .map((alert) => {
+        const metadata =
+          alert.metadata && typeof alert.metadata === "object"
+            ? (alert.metadata as Record<string, unknown>)
+            : {};
+        const recommendation =
+          metadata.recommendation && typeof metadata.recommendation === "object"
+            ? (metadata.recommendation as Record<string, unknown>)
+            : {};
+        const reviewAt =
+          typeof recommendation.reviewAt === "string"
+            ? recommendation.reviewAt
+            : null;
+        const dueDate =
+          typeof metadata.dueDate === "string"
+            ? metadata.dueDate
+            : reviewAt;
+        const amountCandidates = [
+          metadata.amountRounded,
+          metadata.spentRounded,
+          metadata.remaining,
+          metadata.projectedBalance,
+          metadata.currentExpenses
+        ]
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value))
+          .map((value) => Math.abs(value));
+        const impactAmount = amountCandidates.length > 0 ? Math.max(...amountCandidates) : 0;
+        const severityScore =
+          alert.severity === "CRITICAL" ? 100 : alert.severity === "WARNING" ? 70 : 45;
+        const urgencyScore = dueDate ? this.urgencyScore(input.now, dueDate) : 10;
+        const impactScore =
+          impactAmount >= 3000
+            ? 40
+            : impactAmount >= 1500
+              ? 30
+              : impactAmount >= 600
+                ? 20
+                : impactAmount > 0
+                  ? 10
+                  : 5;
+        const typeScore =
+          alert.type === "CASHFLOW"
+            ? 20
+            : alert.type === "BUDGET"
+              ? 15
+              : alert.type === "GOAL"
+                ? 12
+                : 8;
+        const score = severityScore + urgencyScore + impactScore + typeScore;
+        const reason =
+          typeof recommendation.whyItMatters === "string"
+            ? recommendation.whyItMatters
+            : alert.title;
+        const title =
+          typeof recommendation.whatToDoNow === "string"
+            ? recommendation.whatToDoNow
+            : alert.title;
+        const impactEstimate =
+          typeof recommendation.impactEstimate === "string"
+            ? recommendation.impactEstimate
+            : impactAmount > 0
+              ? `Impacto potencial aproximado: R$ ${Math.round(impactAmount)}.`
+              : "Ajuste preventivo para manter previsibilidade.";
+
+        return {
+          id: `alert:${alert.id}`,
+          title,
+          reason,
+          route: alert.actionRoute ?? "/dashboard",
+          cta: alert.actionLabel ?? "Ver detalhe",
+          dueDate,
+          score,
+          impactEstimate
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    const shortTermActions = actionable.slice(0, 3);
+    const topAction = shortTermActions[0] ?? {
+      id: "monthly-review",
+      title: "Fazer revisao financeira da semana",
+      reason: "Revisao frequente melhora previsibilidade e reduz surpresas.",
+      route: "/reports",
+      cta: "Abrir relatorios",
+      dueDate: input.now.toISOString().slice(0, 10),
+      score: 70,
+      impactEstimate: "Objetivo: manter consistencia e evitar desvios."
+    };
+    const criticalCount = actionable.filter((item) => item.score >= 145).length;
+    const warningCount = actionable.filter(
+      (item) => item.score >= 110 && item.score < 145
+    ).length;
+    const riskScore = Math.min(
+      100,
+      Math.max(
+        15,
+        Math.round(
+          (criticalCount * 28) +
+          (warningCount * 12) +
+          (input.leftover < 0 ? 18 : 0) +
+          (input.currentBudgetUsage > 1 ? 16 : input.currentBudgetUsage > 0.85 ? 8 : 0)
+        )
+      )
+    );
+    const riskLevel =
+      riskScore >= 80
+        ? "critico"
+        : riskScore >= 60
+          ? "alto"
+          : riskScore >= 35
+            ? "moderado"
+            : "baixo";
+    const staleGoals = input.goals.filter((goal) => {
+      const target = Number(String(goal.targetAmount));
+      const current = Number(String(goal.currentAmount));
+      return target > current;
+    });
+
+    return {
+      priorityOfWeek: {
+        id: topAction.id,
+        title: topAction.title,
+        route: topAction.route,
+        cta: topAction.cta,
+        dueDate: topAction.dueDate,
+        score: topAction.score
+      },
+      mainAttention:
+        topAction.reason,
+      shortTermActions,
+      riskSummary: {
+        level: riskLevel,
+        score: riskScore,
+        label:
+          riskLevel === "critico"
+            ? "Risco alto e imediato"
+            : riskLevel === "alto"
+              ? "Risco elevado"
+              : riskLevel === "moderado"
+                ? "Risco moderado"
+                : "Risco controlado",
+        description:
+          criticalCount > 0
+            ? `${criticalCount} ponto(s) critico(s) pedem acao imediata.`
+            : warningCount > 0
+              ? `${warningCount} ponto(s) relevante(s) para ajustar nesta semana.`
+              : "Sem sinais urgentes no momento."
+      },
+      monthlyActionPlan: {
+        title: "Plano de acao do mes",
+        subtitle: "As 3 acoes mais relevantes para manter sua saude financeira.",
+        actions: shortTermActions
+      },
+      routine: {
+        weeklyPriority: topAction.title,
+        monthReview:
+          input.leftover < 0
+            ? "Revise despesas variaveis e ajuste compromissos dos proximos 7 dias."
+            : "Mantenha o controle semanal para preservar a sobra do mes.",
+        goalConsistency:
+          staleGoals.length > 0
+            ? `${staleGoals.length} meta(s) ainda sem ritmo ideal de aporte.`
+            : "Metas em consistencia adequada neste periodo.",
+        followUpReminder:
+          "Reserve 10 minutos na semana para revisar alertas, metas e proxima fatura."
+      }
+    };
+  }
+
+  private urgencyScore(now: Date, referenceDateIso: string) {
+    const target = new Date(referenceDateIso);
+    if (Number.isNaN(target.getTime())) return 10;
+    const diffDays = Math.floor((target.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+    if (diffDays <= 0) return 35;
+    if (diffDays <= 2) return 28;
+    if (diffDays <= 7) return 18;
+    return 10;
   }
 
   private buildInsights(input: {

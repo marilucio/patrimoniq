@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { AlertSeverity, AlertType, Prisma } from "@prisma/client";
 import type { AuthenticatedRequestContext } from "../../common/auth.types";
+import { EngagementAnalyticsService } from "../../common/engagement-analytics.service";
 import {
   endOfMonth,
   isInflow,
@@ -16,6 +17,7 @@ export interface AlertRecommendation {
   whyItMatters: string;
   whatToDoNow: string;
   reviewAt: string;
+  impactEstimate?: string;
 }
 
 interface AlertRule {
@@ -38,6 +40,7 @@ export class AlertsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
+    private readonly engagementAnalytics: EngagementAnalyticsService,
   ) {}
 
   async list(auth: AuthenticatedRequestContext) {
@@ -50,7 +53,7 @@ export class AlertsService {
       take: 20,
     });
 
-    return {
+    const payload = {
       items: alerts.map((alert) => ({
         id: alert.id,
         type: alert.type,
@@ -66,6 +69,17 @@ export class AlertsService {
       })),
       unreadCount: alerts.filter((a) => !a.acknowledgedAt).length,
     };
+    await this.engagementAnalytics.record({
+      userId: auth.userId,
+      sessionId: auth.sessionId,
+      source: "alerts",
+      eventName: "alerts_list_viewed",
+      metadata: {
+        items: payload.items.length,
+        unreadCount: payload.unreadCount
+      }
+    });
+    return payload;
   }
 
   async acknowledge(auth: AuthenticatedRequestContext, alertId: string) {
@@ -78,6 +92,13 @@ export class AlertsService {
       data: { acknowledgedAt: new Date() },
     });
 
+    await this.engagementAnalytics.record({
+      userId: auth.userId,
+      sessionId: auth.sessionId,
+      source: "alerts",
+      eventName: "alert_acknowledged",
+      metadata: { alertId }
+    });
     return { success: true };
   }
 
@@ -91,6 +112,13 @@ export class AlertsService {
       data: { dismissedAt: new Date() },
     });
 
+    await this.engagementAnalytics.record({
+      userId: auth.userId,
+      sessionId: auth.sessionId,
+      source: "alerts",
+      eventName: "alert_dismissed",
+      metadata: { alertId }
+    });
     return { success: true };
   }
 
@@ -104,6 +132,13 @@ export class AlertsService {
       data: { acknowledgedAt: new Date() },
     });
 
+    await this.engagementAnalytics.record({
+      userId: auth.userId,
+      sessionId: auth.sessionId,
+      source: "alerts",
+      eventName: "alerts_acknowledged_all",
+      metadata: { count: result.count }
+    });
     return { success: true, count: result.count };
   }
 
@@ -181,6 +216,7 @@ export class AlertsService {
             "Antecipar esse pagamento evita juros e protege seu fluxo de caixa.",
           whatToDoNow: "Reserve o valor e programe o pagamento ainda hoje.",
           reviewAt: dueLabel,
+          impactEstimate: "Evita juros por atraso e protege o caixa da semana."
         },
       });
     }
@@ -215,6 +251,7 @@ export class AlertsService {
           whatToDoNow:
             "Regularize o pagamento agora e confirme a baixa no sistema.",
           reviewAt: this.plusDaysLabel(now, 1),
+          impactEstimate: "Pode reduzir custo com multa e juros ja no proximo fechamento."
         },
       });
     }
@@ -262,6 +299,7 @@ export class AlertsService {
             whatToDoNow:
               "Pause gastos dessa categoria e revise os proximos lancamentos.",
             reviewAt: this.plusDaysLabel(now, 2),
+            impactEstimate: `Objetivo: reduzir pelo menos R$ ${Math.round(Math.max(spent - limit, 0))} para voltar ao plano.`
           },
         });
       } else if (usage >= threshold) {
@@ -287,6 +325,7 @@ export class AlertsService {
             whatToDoNow:
               "Revise despesas variaveis e limite novos gastos desta categoria.",
             reviewAt: this.plusDaysLabel(now, 3),
+            impactEstimate: `Margem restante aproximada: R$ ${Math.max(Math.round(limit - spent), 0)}.`
           },
         });
       }
@@ -329,6 +368,7 @@ export class AlertsService {
             whatToDoNow:
               "Defina um aporte minimo para esta semana e registre o compromisso.",
             reviewAt: this.plusDaysLabel(now, 7),
+            impactEstimate: `Sugestao de ritmo: R$ ${Math.max(Math.round((target - current) / 6), 1)} por mes.`
           },
         });
       }
@@ -368,6 +408,7 @@ export class AlertsService {
           whatToDoNow:
             "Adie gastos nao essenciais e priorize quitar despesas obrigatorias.",
           reviewAt: this.plusDaysLabel(now, 2),
+          impactEstimate: `Deficit projetado: R$ ${Math.round(Math.abs(projectedBalance))}.`
         },
       });
     }
@@ -418,6 +459,7 @@ export class AlertsService {
           whatToDoNow:
             "Identifique os 3 maiores aumentos no relatorio e corte excessos imediatos.",
           reviewAt: this.plusDaysLabel(now, 7),
+          impactEstimate: `Objetivo de ajuste: reduzir cerca de R$ ${Math.max(Math.round(expenses - prevExpenses), 0)} para voltar ao patamar anterior.`
         },
       });
     }
@@ -432,6 +474,16 @@ export class AlertsService {
         metadata: alert.metadata,
       })),
       referenceDate: now,
+    });
+    await this.engagementAnalytics.record({
+      userId: auth.userId,
+      sessionId: auth.sessionId,
+      source: "alerts",
+      eventName: "alerts_evaluated",
+      metadata: {
+        evaluated: alerts.length,
+        emailSent: emailDispatch.sent
+      }
     });
 
     return { evaluated: alerts.length, emailSent: emailDispatch.sent };
@@ -507,6 +559,7 @@ export class AlertsService {
     const whyItMatters = recommendation.whyItMatters;
     const whatToDoNow = recommendation.whatToDoNow;
     const reviewAt = recommendation.reviewAt;
+    const impactEstimate = recommendation.impactEstimate;
     if (
       typeof whatHappened !== "string" ||
       typeof whyItMatters !== "string" ||
@@ -520,6 +573,7 @@ export class AlertsService {
       whyItMatters,
       whatToDoNow,
       reviewAt,
+      impactEstimate: typeof impactEstimate === "string" ? impactEstimate : undefined
     };
   }
 

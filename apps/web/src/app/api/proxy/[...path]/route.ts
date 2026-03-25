@@ -23,6 +23,51 @@ function readBackendApiUrl() {
   }
 }
 
+function buildBackendCandidates(request: NextRequest) {
+  const raw = readBackendApiUrl();
+  const candidates = new Set<string>();
+  const normalizedPath = (value: string) => value.replace(/\/$/, "");
+
+  const add = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    candidates.add(normalizedPath(trimmed));
+  };
+
+  try {
+    const parsed = new URL(raw);
+    const pathname = parsed.pathname.replace(/\/$/, "");
+    const baseOrigin = `${parsed.protocol}//${parsed.host}`;
+    const cleanPath =
+      pathname === "/api/proxy"
+        ? "/api"
+        : pathname.endsWith("/api/proxy")
+          ? pathname.slice(0, -"/proxy".length)
+          : pathname;
+    const withApi =
+      !cleanPath || cleanPath === "/" ? "/api" : cleanPath.endsWith("/api") ? cleanPath : `${cleanPath}/api`;
+    add(`${baseOrigin}${withApi}`);
+
+    const withoutApi = withApi.endsWith("/api")
+      ? withApi.slice(0, -4)
+      : withApi;
+    if (withoutApi && withoutApi !== "/") {
+      add(`${baseOrigin}${withoutApi}`);
+    }
+
+    const sameOriginApi = `${request.nextUrl.protocol}//${request.nextUrl.host}/api`;
+    add(sameOriginApi);
+  } catch {
+    const fallback = raw.replace(/\/$/, "");
+    add(fallback);
+    if (!fallback.endsWith("/api")) {
+      add(`${fallback}/api`);
+    }
+  }
+
+  return [...candidates];
+}
+
 function readForwardHeaders(request: NextRequest) {
   const headers = new Headers();
 
@@ -54,41 +99,65 @@ function readForwardHeaders(request: NextRequest) {
 }
 
 async function proxy(request: NextRequest, params: { path?: string[] }) {
-  const targetUrl = `${readBackendApiUrl()}/${(params.path ?? []).join("/")}${request.nextUrl.search}`;
+  const path = (params.path ?? []).join("/");
+  const query = request.nextUrl.search;
+  const body =
+    request.method === "GET" || request.method === "HEAD"
+      ? undefined
+      : await request.arrayBuffer();
+  const headers = readForwardHeaders(request);
+  const candidates = buildBackendCandidates(request);
+  let fallbackResponse: Response | null = null;
 
-  try {
-    const response = await fetch(targetUrl, {
-      method: request.method,
-      headers: readForwardHeaders(request),
-      body:
-        request.method === "GET" || request.method === "HEAD"
-          ? undefined
-          : await request.arrayBuffer(),
-      cache: "no-store",
-      redirect: "manual",
-    });
-    const headers = new Headers(response.headers);
+  for (const candidate of candidates) {
+    const targetUrl = `${candidate}/${path}${query}`;
+    try {
+      const response = await fetch(targetUrl, {
+        method: request.method,
+        headers,
+        body,
+        cache: "no-store",
+        redirect: "manual",
+      });
+      if (response.status === 404) {
+        fallbackResponse = response;
+        continue;
+      }
+      const responseHeaders = new Headers(response.headers);
+      responseHeaders.delete("content-encoding");
+      responseHeaders.delete("content-length");
 
-    headers.delete("content-encoding");
-    headers.delete("content-length");
-
-    return new Response(await response.arrayBuffer(), {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-    });
-  } catch {
-    return Response.json(
-      {
-        statusCode: 502,
-        message: "Nao foi possivel alcancar a API do Patrimoniq.",
-        timestamp: new Date().toISOString(),
-      },
-      {
-        status: 502,
-      },
-    );
+      return new Response(await response.arrayBuffer(), {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+      });
+    } catch {
+      continue;
+    }
   }
+
+  if (fallbackResponse) {
+    const responseHeaders = new Headers(fallbackResponse.headers);
+    responseHeaders.delete("content-encoding");
+    responseHeaders.delete("content-length");
+    return new Response(await fallbackResponse.arrayBuffer(), {
+      status: fallbackResponse.status,
+      statusText: fallbackResponse.statusText,
+      headers: responseHeaders,
+    });
+  }
+
+  return Response.json(
+    {
+      statusCode: 502,
+      message: "Nao foi possivel alcancar a API do Patrimoniq.",
+      timestamp: new Date().toISOString(),
+    },
+    {
+      status: 502,
+    },
+  );
 }
 
 export async function GET(

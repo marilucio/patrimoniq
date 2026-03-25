@@ -1149,6 +1149,58 @@ textarea {
   min-height: auto;
 }
 
+.advisor-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.7rem;
+}
+
+.advisor-risk,
+.advisor-priority {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.8);
+  display: grid;
+  gap: 0.2rem;
+}
+
+.advisor-risk p,
+.advisor-priority p {
+  margin: 0;
+}
+
+.advisor-risk span,
+.advisor-priority span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.advisor-risk.critico {
+  border-color: rgba(207, 84, 73, 0.35);
+  background: linear-gradient(180deg, rgba(207, 84, 73, 0.1), rgba(255, 255, 255, 0.9));
+}
+
+.advisor-risk.alto {
+  border-color: rgba(199, 128, 43, 0.35);
+  background: linear-gradient(180deg, rgba(199, 128, 43, 0.1), rgba(255, 255, 255, 0.9));
+}
+
+.advisor-risk.moderado {
+  border-color: rgba(47, 111, 222, 0.3);
+  background: linear-gradient(180deg, rgba(47, 111, 222, 0.08), rgba(255, 255, 255, 0.9));
+}
+
+.advisor-risk.baixo {
+  border-color: rgba(23, 122, 87, 0.35);
+  background: linear-gradient(180deg, rgba(23, 122, 87, 0.08), rgba(255, 255, 255, 0.9));
+}
+
+.advisor-action-row {
+  gap: 0.35rem;
+}
+
 .dashboard-hero,
 .transaction-layout {
   display: grid;

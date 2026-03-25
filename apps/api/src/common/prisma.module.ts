@@ -1,4 +1,5 @@
 import { Global, Module } from "@nestjs/common";
+import { EngagementAnalyticsService } from "./engagement-analytics.service";
 import { EmailService } from "./email.service";
 import { MonitoringService } from "./monitoring.service";
 import { NetWorthSnapshotsService } from "./net-worth-snapshots.service";
@@ -17,6 +18,7 @@ import { SessionAuthGuard } from "./session-auth.guard";
     NetWorthSnapshotsService,
     SessionAuthGuard,
     MonitoringService,
+    EngagementAnalyticsService,
     EmailService,
     NotificationService,
     ProductAnalyticsService,
@@ -28,6 +30,7 @@ import { SessionAuthGuard } from "./session-auth.guard";
     NetWorthSnapshotsService,
     SessionAuthGuard,
     MonitoringService,
+    EngagementAnalyticsService,
     EmailService,
     NotificationService,
     ProductAnalyticsService,

@@ -335,6 +335,7 @@ model User {
   transactions        Transaction[]        @relation("UserTransactions")
   createdTransactions Transaction[]        @relation("TransactionCreatedBy")
   productEvents       ProductEvent[]
+  engagementMetrics   EngagementMetric[]
   feedbackSubmissions FeedbackSubmission[]
   notificationPreferences NotificationPreference?
   notificationDispatches  NotificationDispatch[]
@@ -900,6 +901,20 @@ model ScoreHistory {
 
   @@unique([userId, snapshotDate])
   @@index([userId, snapshotDate])
+}
+
+model EngagementMetric {
+  id         String   @id @default(uuid())
+  userId     String
+  sessionId  String?
+  source     String
+  eventName  String
+  metadata   Json?
+  occurredAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, source, occurredAt])
+  @@index([eventName, occurredAt])
 }
 
 model ProductEvent {
