@@ -157,15 +157,145 @@ export function smtpTestEmailTemplate(input: {
       eyebrow: "Diagnostico de e-mail",
       title: `SMTP ativo para ${escapeHtml(input.fullName)}`,
       intro:
-        "Este e um disparo de validacao do ambiente beta. Se chegou na sua caixa, o envio transacional principal esta operacional.",
+        "Este e um disparo de validacao do ambiente. Se chegou na sua caixa, o envio transacional principal esta operacional.",
       ctaLabel: "Abrir Patrimoniq",
       ctaUrl: input.appUrl,
       body: [
         `Ambiente atual: <strong>${escapeHtml(input.stage)}</strong>.`,
-        "Use este teste para confirmar recuperacao de senha e outros avisos essenciais antes de abrir o beta."
+        "Use este teste para confirmar recuperacao de senha e outros avisos essenciais."
       ],
       footer: [
         "Este e um e-mail tecnico de validacao do ambiente.",
+        "Equipe Patrimoniq"
+      ]
+    })
+  };
+}
+
+export function billDueReminderEmailTemplate(input: {
+  fullName: string;
+  billDescription: string;
+  dueDate: string;
+  amount: string;
+  appUrl: string;
+}) {
+  return {
+    subject: `Lembrete: ${input.billDescription} vence em ${input.dueDate}`,
+    text: [
+      `Oi, ${input.fullName}.`,
+      "",
+      `A conta "${input.billDescription}" vence em ${input.dueDate}.`,
+      `Valor: R$ ${input.amount}.`,
+      "",
+      "Acesse o Patrimoniq para verificar:",
+      `${input.appUrl}/transactions`,
+      "",
+      "Equipe Patrimoniq"
+    ].join("\n"),
+    html: renderEmailFrame({
+      eyebrow: "Lembrete de vencimento",
+      title: `${escapeHtml(input.billDescription)} vence em breve`,
+      intro: `Oi, ${escapeHtml(input.fullName)}. Voce tem uma conta proxima do vencimento.`,
+      ctaLabel: "Ver lancamentos",
+      ctaUrl: `${input.appUrl}/transactions`,
+      body: [
+        `<strong>Conta:</strong> ${escapeHtml(input.billDescription)}`,
+        `<strong>Vencimento:</strong> ${escapeHtml(input.dueDate)}`,
+        `<strong>Valor:</strong> R$ ${escapeHtml(input.amount)}`
+      ],
+      footer: [
+        "Voce recebe este lembrete porque ativou alertas de vencimento no Patrimoniq.",
+        "Equipe Patrimoniq"
+      ]
+    })
+  };
+}
+
+export function budgetAlertEmailTemplate(input: {
+  fullName: string;
+  budgetName: string;
+  usagePercent: number;
+  spent: string;
+  limit: string;
+  appUrl: string;
+}) {
+  const exceeded = input.usagePercent >= 100;
+  return {
+    subject: exceeded
+      ? `Orcamento "${input.budgetName}" estourado`
+      : `Orcamento "${input.budgetName}" proximo do limite`,
+    text: [
+      `Oi, ${input.fullName}.`,
+      "",
+      exceeded
+        ? `Seu orcamento "${input.budgetName}" ultrapassou o limite.`
+        : `Seu orcamento "${input.budgetName}" esta proximo do limite.`,
+      `Consumo: ${input.usagePercent}% (R$ ${input.spent} de R$ ${input.limit}).`,
+      "",
+      "Acesse o Patrimoniq para acompanhar:",
+      `${input.appUrl}/budgets`,
+      "",
+      "Equipe Patrimoniq"
+    ].join("\n"),
+    html: renderEmailFrame({
+      eyebrow: exceeded ? "Orcamento estourado" : "Alerta de orcamento",
+      title: exceeded
+        ? `Orcamento "${escapeHtml(input.budgetName)}" ultrapassado`
+        : `Orcamento "${escapeHtml(input.budgetName)}" no limite`,
+      intro: `Oi, ${escapeHtml(input.fullName)}. ${exceeded ? "Um orcamento ultrapassou o valor planejado." : "Um orcamento esta proximo do limite definido."}`,
+      ctaLabel: "Ver orcamentos",
+      ctaUrl: `${input.appUrl}/budgets`,
+      body: [
+        `<strong>Orcamento:</strong> ${escapeHtml(input.budgetName)}`,
+        `<strong>Consumo:</strong> ${input.usagePercent}% (R$ ${escapeHtml(input.spent)} de R$ ${escapeHtml(input.limit)})`
+      ],
+      footer: [
+        "Voce recebe este alerta porque ativou notificacoes de orcamento no Patrimoniq.",
+        "Equipe Patrimoniq"
+      ]
+    })
+  };
+}
+
+export function weeklyDigestEmailTemplate(input: {
+  fullName: string;
+  income: string;
+  expenses: string;
+  balance: string;
+  alertCount: number;
+  appUrl: string;
+}) {
+  return {
+    subject: "Seu resumo semanal do Patrimoniq",
+    text: [
+      `Oi, ${input.fullName}.`,
+      "",
+      "Resumo da sua semana:",
+      `Receitas: R$ ${input.income}`,
+      `Despesas: R$ ${input.expenses}`,
+      `Saldo: R$ ${input.balance}`,
+      input.alertCount > 0 ? `Alertas ativos: ${input.alertCount}` : "",
+      "",
+      `Acesse: ${input.appUrl}/dashboard`,
+      "",
+      "Equipe Patrimoniq"
+    ].filter(Boolean).join("\n"),
+    html: renderEmailFrame({
+      eyebrow: "Resumo semanal",
+      title: `Sua semana financeira, ${escapeHtml(input.fullName)}`,
+      intro: "Veja como ficaram suas financas nesta semana.",
+      ctaLabel: "Ver painel completo",
+      ctaUrl: `${input.appUrl}/dashboard`,
+      body: [
+        `<strong>Receitas:</strong> R$ ${escapeHtml(input.income)}`,
+        `<strong>Despesas:</strong> R$ ${escapeHtml(input.expenses)}`,
+        `<strong>Saldo do periodo:</strong> R$ ${escapeHtml(input.balance)}`,
+        input.alertCount > 0
+          ? `<strong>Alertas ativos:</strong> ${input.alertCount} alerta(s) aguardando sua atencao.`
+          : "Nenhum alerta ativo no momento."
+      ],
+      footer: [
+        "Voce recebe este resumo porque ativou o resumo semanal no Patrimoniq.",
         "Equipe Patrimoniq"
       ]
     })
@@ -181,7 +311,7 @@ export function feedbackSubmissionEmailTemplate(input: {
   stage: string;
 }) {
   return {
-    subject: `Novo feedback beta do Patrimoniq: ${input.category}`,
+    subject: `Novo feedback do Patrimoniq: ${input.category}`,
     text: [
       `Usuario: ${input.fullName}`,
       `E-mail: ${input.email}`,
@@ -192,10 +322,10 @@ export function feedbackSubmissionEmailTemplate(input: {
       input.message
     ].join("\n"),
     html: renderEmailFrame({
-      eyebrow: "Feedback beta",
+      eyebrow: "Feedback do usuario",
       title: `Novo feedback em ${escapeHtml(input.category)}`,
       intro:
-        "Um usuario beta enviou um relato direto do aplicativo. Use este contexto para priorizar o ajuste correto.",
+        "Um usuario enviou um relato direto do aplicativo.",
       body: [
         `<strong>Usuario:</strong> ${escapeHtml(input.fullName)} (${escapeHtml(input.email)})`,
         `<strong>Tela:</strong> ${escapeHtml(input.pagePath)}`,
@@ -203,7 +333,7 @@ export function feedbackSubmissionEmailTemplate(input: {
         `<strong>Mensagem:</strong><br /><span style="white-space:pre-wrap;">${escapeHtml(input.message)}</span>`
       ],
       footer: [
-        "Este e um e-mail operacional de beta.",
+        "Este e um e-mail operacional do Patrimoniq.",
         "Equipe Patrimoniq"
       ]
     })

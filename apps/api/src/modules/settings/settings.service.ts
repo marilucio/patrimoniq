@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 import type { AuthenticatedRequestContext } from "../../common/auth.types";
 import { EmailService } from "../../common/email.service";
 import { smtpTestEmailTemplate } from "../../common/email.templates";
@@ -8,83 +12,131 @@ import { PrismaService } from "../../common/prisma.service";
 import { ProductAnalyticsService } from "../../common/product-analytics.service";
 import { RuntimeConfigService } from "../../common/runtime-config.service";
 
+interface NotificationPreferencesRecord {
+  emailAlerts: boolean;
+  weeklyDigest: boolean;
+  dueDateReminders: boolean;
+  budgetAlerts: boolean;
+  pushEnabled: boolean;
+}
+
 @Injectable()
 export class SettingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly runtimeConfig: RuntimeConfigService,
-    private readonly analytics: ProductAnalyticsService
+    private readonly analytics: ProductAnalyticsService,
   ) {}
 
+  private notificationPreferencesStore() {
+    return (
+      this.prisma as unknown as {
+        notificationPreference: {
+          findUnique: (args: {
+            where: { userId: string };
+          }) => Promise<NotificationPreferencesRecord | null>;
+          upsert: (args: {
+            where: { userId: string };
+            update: NotificationPreferencesRecord;
+            create: NotificationPreferencesRecord & { userId: string };
+          }) => Promise<NotificationPreferencesRecord>;
+        };
+      }
+    ).notificationPreference;
+  }
+
   async getSettings(auth: AuthenticatedRequestContext) {
-    const [user, categories, taxTags] = await Promise.all([
-      this.prisma.user.findUniqueOrThrow({
-        where: { id: auth.userId }
-      }),
-      this.prisma.category.findMany({
-        where: {
-          userId: auth.userId,
-          isActive: true
-        },
-        include: {
-          subcategories: {
-            where: { isActive: true }
-          }
-        },
-        orderBy: [{ direction: "asc" }, { name: "asc" }]
-      }),
-      this.prisma.taxTag.findMany({
-        where: {
-          userId: auth.userId
-        }
-      })
-    ]);
+    const [user, categories, taxTags, notificationPreferences] =
+      await Promise.all([
+        this.prisma.user.findUniqueOrThrow({
+          where: { id: auth.userId },
+        }),
+        this.prisma.category.findMany({
+          where: {
+            userId: auth.userId,
+            isActive: true,
+          },
+          include: {
+            subcategories: {
+              where: { isActive: true },
+            },
+          },
+          orderBy: [{ direction: "asc" }, { name: "asc" }],
+        }),
+        this.prisma.taxTag.findMany({
+          where: {
+            userId: auth.userId,
+          },
+        }),
+        this.notificationPreferencesStore().findUnique({
+          where: { userId: auth.userId },
+        }),
+      ]);
 
     return {
       profile: {
         fullName: user.fullName,
         email: user.email,
-        locale: user.locale
+        locale: user.locale,
       },
-      categories: categories.map((category) => ({
-        id: category.id,
-        name: category.name,
-        slug: category.slug,
-        direction: labelForCategoryDirection(category.direction),
-        directionCode: category.direction,
-        subcategories: category.subcategories.map((subcategory) => ({
-          id: subcategory.id,
-          name: subcategory.name,
-          slug: subcategory.slug
-        }))
-      })),
+      categories: categories.map(
+        (category: {
+          id: string;
+          name: string;
+          slug: string;
+          direction: Parameters<typeof labelForCategoryDirection>[0];
+          subcategories: Array<{ id: string; name: string; slug: string }>;
+        }) => ({
+          id: category.id,
+          name: category.name,
+          slug: category.slug,
+          direction: labelForCategoryDirection(category.direction),
+          directionCode: category.direction,
+          subcategories: category.subcategories.map(
+            (subcategory: { id: string; name: string; slug: string }) => ({
+              id: subcategory.id,
+              name: subcategory.name,
+              slug: subcategory.slug,
+            }),
+          ),
+        }),
+      ),
       integrations: [
         "Open Finance",
         "Importacao OFX",
         "Importacao CSV",
         "Importacao PDF",
         "Leitura de comprovantes",
-        "Conciliacao bancaria"
+        "Conciliacao bancaria",
       ],
       fiscalReadiness: {
-        deductibleGroups: taxTags.map((tag) => tag.name),
-        exportMode: "em breve"
+        deductibleGroups: taxTags.map((tag: { name: string }) => tag.name),
+        exportMode: "em breve",
       },
-      runtime: this.runtimeConfig.getRuntimeSummary()
+      notificationPreferences: {
+        emailAlerts: notificationPreferences?.emailAlerts ?? true,
+        weeklyDigest: notificationPreferences?.weeklyDigest ?? false,
+        dueDateReminders: notificationPreferences?.dueDateReminders ?? true,
+        budgetAlerts: notificationPreferences?.budgetAlerts ?? true,
+        pushEnabled: false,
+      },
+      runtime: this.runtimeConfig.getRuntimeSummary(),
     };
   }
 
   async updateProfile(
     auth: AuthenticatedRequestContext,
-    input: { fullName?: string; locale?: string }
+    input: { fullName?: string; locale?: string },
   ) {
     const data: Record<string, string> = {};
 
     if (input.fullName !== undefined) {
       const trimmed = input.fullName.trim();
       if (trimmed.length < 3) {
-        throw new BadRequestException("O nome precisa ter pelo menos 3 caracteres.");
+        throw new BadRequestException(
+          "O nome precisa ter pelo menos 3 caracteres.",
+        );
       }
       data.fullName = trimmed;
     }
@@ -103,7 +155,7 @@ export class SettingsService {
 
     const user = await this.prisma.user.update({
       where: { id: auth.userId },
-      data
+      data,
     });
 
     await this.analytics.recordUserEvent({
@@ -111,7 +163,7 @@ export class SettingsService {
       sessionId: auth.sessionId,
       name: "PROFILE_UPDATED",
       pagePath: "/settings",
-      metadata: { fields: Object.keys(data) }
+      metadata: { fields: Object.keys(data) },
     });
 
     return {
@@ -120,56 +172,63 @@ export class SettingsService {
       profile: {
         fullName: user.fullName,
         email: user.email,
-        locale: user.locale
-      }
+        locale: user.locale,
+      },
     };
   }
 
   async changePassword(
     auth: AuthenticatedRequestContext,
-    input: { currentPassword: string; newPassword: string }
+    input: { currentPassword: string; newPassword: string },
   ) {
     if (!input.currentPassword || !input.newPassword) {
-      throw new BadRequestException("Senha atual e nova senha sao obrigatorias.");
+      throw new BadRequestException(
+        "Senha atual e nova senha sao obrigatorias.",
+      );
     }
 
     if (input.newPassword.length < 8) {
-      throw new BadRequestException("A nova senha precisa ter pelo menos 8 caracteres.");
+      throw new BadRequestException(
+        "A nova senha precisa ter pelo menos 8 caracteres.",
+      );
     }
 
     const user = await this.prisma.user.findUniqueOrThrow({
-      where: { id: auth.userId }
+      where: { id: auth.userId },
     });
 
-    if (!user.passwordHash || !verifyPassword(input.currentPassword, user.passwordHash)) {
+    if (
+      !user.passwordHash ||
+      !verifyPassword(input.currentPassword, user.passwordHash)
+    ) {
       throw new UnauthorizedException("Senha atual incorreta.");
     }
 
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: auth.userId },
-        data: { passwordHash: hashPassword(input.newPassword) }
+        data: { passwordHash: hashPassword(input.newPassword) },
       }),
       this.prisma.session.updateMany({
         where: {
           userId: auth.userId,
           revokedAt: null,
-          id: { not: auth.sessionId }
+          id: { not: auth.sessionId },
         },
-        data: { revokedAt: new Date() }
-      })
+        data: { revokedAt: new Date() },
+      }),
     ]);
 
     await this.analytics.recordUserEvent({
       userId: auth.userId,
       sessionId: auth.sessionId,
       name: "PASSWORD_CHANGED",
-      pagePath: "/settings"
+      pagePath: "/settings",
     });
 
     return {
       success: true,
-      message: "Senha alterada. As outras sessoes foram encerradas."
+      message: "Senha alterada. As outras sessoes foram encerradas.",
     };
   }
 
@@ -178,10 +237,10 @@ export class SettingsService {
       where: {
         userId: auth.userId,
         revokedAt: null,
-        expiresAt: { gt: new Date() }
+        expiresAt: { gt: new Date() },
       },
       orderBy: { lastSeenAt: "desc" },
-      take: 10
+      take: 10,
     });
 
     return {
@@ -191,8 +250,8 @@ export class SettingsService {
         userAgent: session.userAgent,
         ipAddress: session.ipAddress,
         lastSeenAt: session.lastSeenAt.toISOString(),
-        createdAt: session.createdAt.toISOString()
-      }))
+        createdAt: session.createdAt.toISOString(),
+      })),
     };
   }
 
@@ -201,9 +260,9 @@ export class SettingsService {
       where: {
         userId: auth.userId,
         revokedAt: null,
-        id: { not: auth.sessionId }
+        id: { not: auth.sessionId },
       },
-      data: { revokedAt: new Date() }
+      data: { revokedAt: new Date() },
     });
 
     await this.analytics.recordUserEvent({
@@ -211,18 +270,18 @@ export class SettingsService {
       sessionId: auth.sessionId,
       name: "SESSIONS_REVOKED",
       pagePath: "/settings",
-      metadata: { revokedCount: result.count }
+      metadata: { revokedCount: result.count },
     });
 
     return {
       success: true,
-      message: `${result.count} sessao(oes) encerrada(s).`
+      message: `${result.count} sessao(oes) encerrada(s).`,
     };
   }
 
   async updatePreferences(
     auth: AuthenticatedRequestContext,
-    input: { currency?: string; dateFormat?: string }
+    input: { currency?: string; dateFormat?: string },
   ) {
     // Preferences are stored in the user's locale field for now
     // Currency and dateFormat will be stored as a JSON preferences field
@@ -246,8 +305,8 @@ export class SettingsService {
       pagePath: "/settings",
       metadata: {
         currency: input.currency ?? "BRL",
-        dateFormat: input.dateFormat ?? "DD/MM/YYYY"
-      }
+        dateFormat: input.dateFormat ?? "DD/MM/YYYY",
+      },
     });
 
     return {
@@ -255,8 +314,59 @@ export class SettingsService {
       message: "Preferencias salvas.",
       preferences: {
         currency: input.currency ?? "BRL",
-        dateFormat: input.dateFormat ?? "DD/MM/YYYY"
-      }
+        dateFormat: input.dateFormat ?? "DD/MM/YYYY",
+      },
+    };
+  }
+
+  async updateNotificationPreferences(
+    auth: AuthenticatedRequestContext,
+    input: {
+      emailAlerts?: boolean;
+      weeklyDigest?: boolean;
+      dueDateReminders?: boolean;
+      budgetAlerts?: boolean;
+    },
+  ) {
+    const preferences = await this.notificationPreferencesStore().upsert({
+      where: { userId: auth.userId },
+      update: {
+        emailAlerts: input.emailAlerts ?? true,
+        weeklyDigest: input.weeklyDigest ?? false,
+        dueDateReminders: input.dueDateReminders ?? true,
+        budgetAlerts: input.budgetAlerts ?? true,
+        pushEnabled: false,
+      },
+      create: {
+        userId: auth.userId,
+        emailAlerts: input.emailAlerts ?? true,
+        weeklyDigest: input.weeklyDigest ?? false,
+        dueDateReminders: input.dueDateReminders ?? true,
+        budgetAlerts: input.budgetAlerts ?? true,
+        pushEnabled: false,
+      },
+    });
+
+    const normalizedPreferences = {
+      emailAlerts: preferences.emailAlerts,
+      weeklyDigest: preferences.weeklyDigest,
+      dueDateReminders: preferences.dueDateReminders,
+      budgetAlerts: preferences.budgetAlerts,
+      pushEnabled: false,
+    };
+
+    await this.analytics.recordUserEvent({
+      userId: auth.userId,
+      sessionId: auth.sessionId,
+      name: "PREFERENCES_CHANGED",
+      pagePath: "/settings",
+      metadata: { notificationPreferences: normalizedPreferences },
+    });
+
+    return {
+      success: true,
+      message: "Preferencias de notificacao salvas.",
+      preferences: normalizedPreferences,
     };
   }
 
@@ -265,7 +375,7 @@ export class SettingsService {
 
     if (!runtime.email.canSendTestEmail) {
       throw new BadRequestException(
-        "O envio de teste so fica disponivel quando o SMTP real esta configurado neste ambiente."
+        "O envio de teste so fica disponivel quando o SMTP real esta configurado neste ambiente.",
       );
     }
 
@@ -273,19 +383,19 @@ export class SettingsService {
     const template = smtpTestEmailTemplate({
       fullName: auth.fullName,
       stage: runtime.stage,
-      appUrl: runtime.appUrl
+      appUrl: runtime.appUrl,
     });
 
     await this.emailService.send({
       to: auth.email,
       subject: template.subject,
       text: template.text,
-      html: template.html
+      html: template.html,
     });
 
     return {
       success: true,
-      message: `E-mail de teste enviado para ${auth.email}.`
+      message: `E-mail de teste enviado para ${auth.email}.`,
     };
   }
 }

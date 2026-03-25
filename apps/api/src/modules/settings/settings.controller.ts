@@ -46,6 +46,20 @@ export class SettingsController {
     return this.settingsService.updatePreferences(auth, body);
   }
 
+  @Patch("notifications")
+  updateNotificationPreferences(
+    @CurrentAuth() auth: AuthenticatedRequestContext,
+    @Body()
+    body: {
+      emailAlerts?: boolean;
+      weeklyDigest?: boolean;
+      dueDateReminders?: boolean;
+      budgetAlerts?: boolean;
+    }
+  ) {
+    return this.settingsService.updateNotificationPreferences(auth, body);
+  }
+
   @Post("diagnostics/email-test")
   sendEmailTest(@CurrentAuth() auth: AuthenticatedRequestContext) {
     return this.settingsService.sendEmailTest(auth);

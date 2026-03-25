@@ -279,6 +279,26 @@ enum FeedbackStatus {
   ARCHIVED
 }
 
+enum NotificationDeliveryChannel {
+  EMAIL
+  PUSH
+  INTERNAL
+}
+
+enum NotificationEventType {
+  BILL_DUE
+  BILL_OVERDUE
+  BUDGET_NEAR_LIMIT
+  BUDGET_EXCEEDED
+  WEEKLY_DIGEST
+}
+
+enum NotificationDispatchStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model User {
   id                  String               @id @default(uuid())
   email               String               @unique
@@ -316,6 +336,8 @@ model User {
   createdTransactions Transaction[]        @relation("TransactionCreatedBy")
   productEvents       ProductEvent[]
   feedbackSubmissions FeedbackSubmission[]
+  notificationPreferences NotificationPreference?
+  notificationDispatches  NotificationDispatch[]
 }
 
 model Session {
@@ -635,6 +657,36 @@ model Alert {
   createdByUser   User?          @relation("AlertCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([userId, severity, acknowledgedAt])
+}
+
+model NotificationPreference {
+  userId            String   @id
+  emailAlerts       Boolean  @default(true)
+  weeklyDigest      Boolean  @default(false)
+  dueDateReminders  Boolean  @default(true)
+  budgetAlerts      Boolean  @default(true)
+  pushEnabled       Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationDispatch {
+  id          String                      @id @default(uuid())
+  userId      String
+  channel     NotificationDeliveryChannel
+  eventType   NotificationEventType
+  dedupeKey   String                      @unique
+  status      NotificationDispatchStatus  @default(PENDING)
+  metadata    Json?
+  sentAt      DateTime?
+  failedAt    DateTime?
+  failureCode String?
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
+  user        User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, channel, eventType, createdAt])
 }
 
 model Insight {

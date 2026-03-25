@@ -1,11 +1,78 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useTransition } from "react";
 import { calculateGoalProgress, formatCurrency } from "@patrimoniq/domain";
 import { ErrorState, LoadingState } from "../../components/page-state";
 import { EmptyState, PageIntro, ProgressBar, SectionCard, StatCard } from "../../components/ui";
 import { useApiResource } from "../../hooks/use-api-resource";
-import type { DashboardResponse } from "../../lib/api";
+import {
+  apiRequest,
+  type AlertItem,
+  type AlertsResponse,
+  type DashboardResponse
+} from "../../lib/api";
+
+const severityTone: Record<string, string> = {
+  CRITICAL: "critical",
+  WARNING: "warning",
+  INFO: "info"
+};
+
+function AlertsStrip(props: {
+  alerts: AlertItem[];
+  onDismiss: (id: string) => void;
+  onAcknowledge: (id: string) => void;
+}) {
+  if (props.alerts.length === 0) return null;
+
+  return (
+    <div className="alerts-strip" role="region" aria-label="Alertas financeiros">
+      {props.alerts.slice(0, 5).map((alert) => (
+        <article
+          key={alert.id}
+          className={`alert-card ${severityTone[alert.severity] ?? "info"}`}
+        >
+          <div className="alert-content">
+            <strong>{alert.title}</strong>
+            <p>{alert.message}</p>
+            {alert.recommendation ? (
+              <div className="alert-recommendation">
+                <p><strong>O que aconteceu:</strong> {alert.recommendation.whatHappened}</p>
+                <p><strong>Por que importa:</strong> {alert.recommendation.whyItMatters}</p>
+                <p><strong>O que fazer agora:</strong> {alert.recommendation.whatToDoNow}</p>
+                <p><strong>Revisar novamente:</strong> {alert.recommendation.reviewAt}</p>
+              </div>
+            ) : null}
+          </div>
+          <div className="alert-actions">
+            {alert.actionRoute ? (
+              <Link href={alert.actionRoute} className="inline-link">
+                {alert.actionLabel ?? "Ver"}
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => props.onAcknowledge(alert.id)}
+              aria-label={`Marcar alerta como lido: ${alert.title}`}
+            >
+              Marcar como lido
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => props.onDismiss(alert.id)}
+              aria-label={`Dispensar alerta: ${alert.title}`}
+            >
+              Dispensar
+            </button>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
 
 function OnboardingCard(props: { onboarding: DashboardResponse["onboarding"] }) {
   const progress = (props.onboarding.completedSteps / props.onboarding.totalSteps) * 100;
@@ -98,6 +165,34 @@ function DashboardGuideCard(props: { guide: string[] }) {
 
 export function DashboardClientPage() {
   const { data, loading, error } = useApiResource<DashboardResponse>("/dashboard/overview");
+  const alerts = useApiResource<AlertsResponse>("/alerts");
+  const [, startTransition] = useTransition();
+
+  // Trigger alert evaluation on dashboard load
+  useEffect(() => {
+    void apiRequest("/alerts/evaluate", { method: "POST" }).then(() => {
+      void alerts.reload();
+    }).catch(() => {
+      // Silent — alerts are non-critical
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function dismissAlert(id: string) {
+    startTransition(() => {
+      void apiRequest(`/alerts/${id}/dismiss`, { method: "POST" }).then(() => {
+        void alerts.reload();
+      });
+    });
+  }
+
+  function acknowledgeAlert(id: string) {
+    startTransition(() => {
+      void apiRequest(`/alerts/${id}/acknowledge`, { method: "POST" }).then(() => {
+        void alerts.reload();
+      });
+    });
+  }
 
   if (loading) {
     return <LoadingState />;
@@ -113,6 +208,8 @@ export function DashboardClientPage() {
       </div>
     );
   }
+
+  const activeAlerts = (alerts.data?.items ?? []).filter((a) => !a.isRead);
 
   const emptyState =
     data.summary.income === 0 &&
@@ -143,6 +240,12 @@ export function DashboardClientPage() {
         title={`${data.userName}, este e o essencial do seu mes`}
         description="Saldo, compromissos e progresso das suas metas em um so lugar."
         actions={<div className="hero-chip">Atualizado em {data.referenceMonth}</div>}
+      />
+
+      <AlertsStrip
+        alerts={activeAlerts}
+        onDismiss={dismissAlert}
+        onAcknowledge={acknowledgeAlert}
       />
 
       <section className="dashboard-hero">

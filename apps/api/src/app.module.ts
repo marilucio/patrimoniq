@@ -8,6 +8,7 @@ import { PrismaModule } from "./common/prisma.module";
 import { RequestLoggingInterceptor } from "./common/request-logging.interceptor";
 import { SessionAuthGuard } from "./common/session-auth.guard";
 import { AccountsModule } from "./modules/accounts/accounts.module";
+import { AlertsModule } from "./modules/alerts/alerts.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { AssetsModule } from "./modules/assets/assets.module";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -31,6 +32,7 @@ import { TransactionsModule } from "./modules/transactions/transactions.module";
       envFilePath: [join(process.cwd(), "apps/api/.env"), join(process.cwd(), ".env")]
     }),
     PrismaModule,
+    AlertsModule,
     AnalyticsModule,
     AuthModule,
     AccountsModule,

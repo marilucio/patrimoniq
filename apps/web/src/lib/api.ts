@@ -303,6 +303,13 @@ export interface SettingsResponse {
     deductibleGroups: string[];
     exportMode: string;
   };
+  notificationPreferences: {
+    emailAlerts: boolean;
+    weeklyDigest: boolean;
+    dueDateReminders: boolean;
+    budgetAlerts: boolean;
+    pushEnabled: boolean;
+  };
   runtime: {
     stage: string;
     appUrl: string;
@@ -333,6 +340,18 @@ export interface SettingsResponse {
       targetLabel: string;
     };
     warnings: string[];
+  };
+}
+
+export interface NotificationPreferencesResponse {
+  success: boolean;
+  message: string;
+  preferences: {
+    emailAlerts: boolean;
+    weeklyDigest: boolean;
+    dueDateReminders: boolean;
+    budgetAlerts: boolean;
+    pushEnabled: boolean;
   };
 }
 
@@ -371,6 +390,30 @@ export interface PreferencesResponse {
     currency: string;
     dateFormat: string;
   };
+}
+
+export interface AlertItem {
+  id: string;
+  type: string;
+  severity: "INFO" | "WARNING" | "CRITICAL";
+  title: string;
+  message: string;
+  actionLabel: string | null;
+  actionRoute: string | null;
+  recommendation: {
+    whatHappened: string;
+    whyItMatters: string;
+    whatToDoNow: string;
+    reviewAt: string;
+  } | null;
+  isRead: boolean;
+  triggerDate: string;
+  createdAt: string;
+}
+
+export interface AlertsResponse {
+  items: AlertItem[];
+  unreadCount: number;
 }
 
 export interface DashboardResponse {

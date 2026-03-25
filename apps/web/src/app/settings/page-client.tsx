@@ -1,7 +1,7 @@
 "use client";
 
 import { formatCurrency } from "@patrimoniq/domain";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { ErrorState, LoadingState } from "../../components/page-state";
 import {
   FeedbackBanner,
@@ -18,6 +18,7 @@ import {
   readApiError,
   type AccountsResponse,
   type CategoriesResponse,
+  type NotificationPreferencesResponse,
   type PasswordChangeResponse,
   type PreferencesResponse,
   type ProfileUpdateResponse,
@@ -146,6 +147,25 @@ export function SettingsClientPage() {
     message: string;
   } | null>(null);
 
+  // Notification preferences
+  const [notifEmailAlerts, setNotifEmailAlerts] = useState(() =>
+    readStoredPreference("notif_emailAlerts", "true") === "true"
+  );
+  const [notifWeeklyDigest, setNotifWeeklyDigest] = useState(() =>
+    readStoredPreference("notif_weeklyDigest", "false") === "true"
+  );
+  const [notifDueDate, setNotifDueDate] = useState(() =>
+    readStoredPreference("notif_dueDateReminders", "true") === "true"
+  );
+  const [notifBudget, setNotifBudget] = useState(() =>
+    readStoredPreference("notif_budgetAlerts", "true") === "true"
+  );
+  const [notifFeedback, setNotifFeedback] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [notifHydratedFromServer, setNotifHydratedFromServer] = useState(false);
+
   // CRUD forms
   const [accountForm, setAccountForm] = useState(emptyAccountForm);
   const [categoryForm, setCategoryForm] = useState(emptyCategoryForm);
@@ -168,6 +188,16 @@ export function SettingsClientPage() {
     setProfileName(profile.fullName);
     setProfileLocale(profile.locale);
   }
+
+  useEffect(() => {
+    if (!settings.data || notifHydratedFromServer) return;
+    const notificationPreferences = settings.data.notificationPreferences;
+    setNotifEmailAlerts(notificationPreferences.emailAlerts);
+    setNotifWeeklyDigest(notificationPreferences.weeklyDigest);
+    setNotifDueDate(notificationPreferences.dueDateReminders);
+    setNotifBudget(notificationPreferences.budgetAlerts);
+    setNotifHydratedFromServer(true);
+  }, [notifHydratedFromServer, settings.data]);
 
   async function refreshAll() {
     await Promise.all([
@@ -288,6 +318,44 @@ export function SettingsClientPage() {
         .catch((requestError) => {
           const message = readApiError(requestError);
           setPrefFeedback({ tone: "error", message });
+        });
+    });
+  }
+
+  // ── Notification Preferences ──
+
+  function submitNotificationPreferences(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNotifFeedback(null);
+
+    startTransition(() => {
+      void apiRequest<NotificationPreferencesResponse>(
+        "/settings/notifications",
+        {
+          method: "PATCH",
+          body: {
+            emailAlerts: notifEmailAlerts,
+            weeklyDigest: notifWeeklyDigest,
+            dueDateReminders: notifDueDate,
+            budgetAlerts: notifBudget
+          }
+        }
+      )
+        .then((response) => {
+          storePreference("notif_emailAlerts", String(response.preferences.emailAlerts));
+          storePreference("notif_weeklyDigest", String(response.preferences.weeklyDigest));
+          storePreference("notif_dueDateReminders", String(response.preferences.dueDateReminders));
+          storePreference("notif_budgetAlerts", String(response.preferences.budgetAlerts));
+          setNotifEmailAlerts(response.preferences.emailAlerts);
+          setNotifWeeklyDigest(response.preferences.weeklyDigest);
+          setNotifDueDate(response.preferences.dueDateReminders);
+          setNotifBudget(response.preferences.budgetAlerts);
+          setNotifFeedback({ tone: "success", message: response.message });
+          showToast({ tone: "success", message: response.message });
+        })
+        .catch((requestError) => {
+          const message = readApiError(requestError);
+          setNotifFeedback({ tone: "error", message });
         });
     });
   }
@@ -691,6 +759,63 @@ export function SettingsClientPage() {
             ) : null}
 
             <FormActions submitLabel="Salvar preferencias" pending={isPending} />
+          </form>
+        </SectionCard>
+
+        <SectionCard title="Notificacoes" subtitle="Escolha como receber alertas">
+          <form className="editor-form" onSubmit={submitNotificationPreferences}>
+            <div className="toggle-list">
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={notifEmailAlerts}
+                  onChange={(e) => setNotifEmailAlerts(e.target.checked)}
+                />
+                <div>
+                  <strong>Alertas por e-mail</strong>
+                  <p>Receber alertas importantes no seu e-mail.</p>
+                </div>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={notifWeeklyDigest}
+                  onChange={(e) => setNotifWeeklyDigest(e.target.checked)}
+                />
+                <div>
+                  <strong>Resumo semanal</strong>
+                  <p>Receber um resumo semanal das suas financas.</p>
+                </div>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={notifDueDate}
+                  onChange={(e) => setNotifDueDate(e.target.checked)}
+                />
+                <div>
+                  <strong>Lembretes de vencimento</strong>
+                  <p>Avisar quando uma conta estiver perto do vencimento.</p>
+                </div>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={notifBudget}
+                  onChange={(e) => setNotifBudget(e.target.checked)}
+                />
+                <div>
+                  <strong>Alertas de orcamento</strong>
+                  <p>Avisar quando um orcamento estiver proximo do limite.</p>
+                </div>
+              </label>
+            </div>
+
+            {notifFeedback ? (
+              <FeedbackBanner tone={notifFeedback.tone} message={notifFeedback.message} />
+            ) : null}
+
+            <FormActions submitLabel="Salvar notificacoes" pending={isPending} />
           </form>
         </SectionCard>
       </div>

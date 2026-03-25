@@ -2,6 +2,7 @@ import { Global, Module } from "@nestjs/common";
 import { EmailService } from "./email.service";
 import { MonitoringService } from "./monitoring.service";
 import { NetWorthSnapshotsService } from "./net-worth-snapshots.service";
+import { NotificationService } from "./notification.service";
 import { OwnershipService } from "./ownership.service";
 import { PrismaService } from "./prisma.service";
 import { ProductAnalyticsService } from "./product-analytics.service";
@@ -17,6 +18,7 @@ import { SessionAuthGuard } from "./session-auth.guard";
     SessionAuthGuard,
     MonitoringService,
     EmailService,
+    NotificationService,
     ProductAnalyticsService,
     RuntimeConfigService
   ],
@@ -27,6 +29,7 @@ import { SessionAuthGuard } from "./session-auth.guard";
     SessionAuthGuard,
     MonitoringService,
     EmailService,
+    NotificationService,
     ProductAnalyticsService,
     RuntimeConfigService
   ]
