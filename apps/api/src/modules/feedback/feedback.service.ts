@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { FeedbackCategory } from "@prisma/client";
 import type { AuthenticatedRequestContext } from "../../common/auth.types";
@@ -27,15 +28,28 @@ export class FeedbackService {
   ) {}
 
   async list(auth: AuthenticatedRequestContext, limit = 6) {
-    const items = await this.prisma.feedbackSubmission.findMany({
-      where: {
-        userId: auth.userId
-      },
-      orderBy: {
-        createdAt: "desc"
-      },
-      take: Math.min(Math.max(limit, 1), 20)
-    });
+    let items: Awaited<ReturnType<typeof this.prisma.feedbackSubmission.findMany>>;
+
+    try {
+      items = await this.prisma.feedbackSubmission.findMany({
+        where: {
+          userId: auth.userId
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: Math.min(Math.max(limit, 1), 20)
+      });
+    } catch (error) {
+      if (!this.shouldIgnoreFeedbackStorageError(error)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        `Feedback indisponivel para listagem do usuario ${auth.userId}: ${this.describeError(error)}`
+      );
+      items = [];
+    }
 
     return {
       items: items.map((item) => ({
@@ -66,19 +80,37 @@ export class FeedbackService {
       throw new BadRequestException("Descreva o feedback com pelo menos 8 caracteres.");
     }
 
-    const feedback = await this.prisma.feedbackSubmission.create({
-      data: {
-        userId: auth.userId,
-        category: input.category ?? "OTHER",
-        message: input.message.trim(),
-        pagePath: input.pagePath?.trim() || null,
-        contactEmail: auth.email,
-        userAgent: context?.userAgent ?? null,
-        metadata: {
-          fullName: auth.fullName
+    let feedback:
+      | Awaited<ReturnType<typeof this.prisma.feedbackSubmission.create>>
+      | { id: string; category: FeedbackCategory };
+
+    try {
+      feedback = await this.prisma.feedbackSubmission.create({
+        data: {
+          userId: auth.userId,
+          category: input.category ?? "OTHER",
+          message: input.message.trim(),
+          pagePath: input.pagePath?.trim() || null,
+          contactEmail: auth.email,
+          userAgent: context?.userAgent ?? null,
+          metadata: {
+            fullName: auth.fullName
+          }
         }
+      });
+    } catch (error) {
+      if (!this.shouldIgnoreFeedbackStorageError(error)) {
+        throw error;
       }
-    });
+
+      this.logger.warn(
+        `Feedback indisponivel para escrita do usuario ${auth.userId}: ${this.describeError(error)}`
+      );
+      feedback = {
+        id: randomUUID(),
+        category: input.category ?? "OTHER"
+      };
+    }
 
     await this.analytics.recordUserEvent({
       userId: auth.userId,
@@ -191,5 +223,28 @@ export class FeedbackService {
         stack: error instanceof Error ? error.stack : undefined
       });
     }
+  }
+
+  private shouldIgnoreFeedbackStorageError(error: unknown) {
+    const code = this.readPrismaCode(error);
+    const message = this.describeError(error);
+
+    return code === "P2021" || code === "P2022" || /FeedbackSubmission/i.test(message);
+  }
+
+  private readPrismaCode(error: unknown) {
+    if (error && typeof error === "object" && "code" in error && typeof error.code === "string") {
+      return error.code;
+    }
+
+    return null;
+  }
+
+  private describeError(error: unknown) {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return String(error);
   }
 }

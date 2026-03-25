@@ -10,6 +10,7 @@
     "start:api": "pnpm --filter @patrimoniq/api start",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
+    "test:e2e:web": "pnpm --filter @patrimoniq/web test:e2e",
     "db:push": "supabase db push --linked --include-roles",
     "db:seed": "pnpm --filter @patrimoniq/api db:seed",
     "supabase:link": "supabase link --project-ref mykrcgdfxgoupmrajcvw",
