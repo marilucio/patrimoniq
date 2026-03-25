@@ -370,6 +370,22 @@ export class SettingsService {
     };
   }
 
+  async getNotificationPreferences(auth: AuthenticatedRequestContext) {
+    const preferences = await this.notificationPreferencesStore().findUnique({
+      where: { userId: auth.userId }
+    });
+    return {
+      success: true,
+      preferences: {
+        emailAlerts: preferences?.emailAlerts ?? true,
+        weeklyDigest: preferences?.weeklyDigest ?? false,
+        dueDateReminders: preferences?.dueDateReminders ?? true,
+        budgetAlerts: preferences?.budgetAlerts ?? true,
+        pushEnabled: false
+      }
+    };
+  }
+
   async sendEmailTest(auth: AuthenticatedRequestContext) {
     const runtime = this.runtimeConfig.getRuntimeSummary();
 

@@ -482,12 +482,22 @@ export interface DashboardResponse {
     shortTermActions: Array<{
       id: string;
       title: string;
-      reason: string;
+      source: string;
+      type: string;
+      message: string;
+      recommendation: string;
       route: string;
       cta: string;
       dueDate: string | null;
       score: number;
       impactEstimate: string;
+      context: {
+        status?: string;
+        feedback?: string | null;
+        postponedUntil?: string | null;
+        resolvedAt?: string | null;
+        suggestionTone?: string;
+      };
     }>;
     riskSummary: {
       level: "baixo" | "moderado" | "alto" | "critico";
@@ -501,12 +511,22 @@ export interface DashboardResponse {
       actions: Array<{
         id: string;
         title: string;
-        reason: string;
+        source: string;
+        type: string;
+        message: string;
+        recommendation: string;
         route: string;
         cta: string;
         dueDate: string | null;
         score: number;
         impactEstimate: string;
+        context: {
+          status?: string;
+          feedback?: string | null;
+          postponedUntil?: string | null;
+          resolvedAt?: string | null;
+          suggestionTone?: string;
+        };
       }>;
     };
     routine: {
@@ -514,6 +534,30 @@ export interface DashboardResponse {
       monthReview: string;
       goalConsistency: string;
       followUpReminder: string;
+    };
+    behaviorProfile: {
+      strongTypes: string[];
+      weakTypes: string[];
+      byType: Array<{
+        type: string;
+        completedRate: number;
+        dismissedRate: number;
+        postponedRate: number;
+        totalInteractions: number;
+      }>;
+    };
+    consultiveAnalytics: {
+      completedCount: number;
+      postponedCount: number;
+      dismissedCount: number;
+      viewedCount: number;
+      avgActionTimeMinutes: number | null;
+      completionRate: number;
+      byType: Array<{
+        type: string;
+        acted: number;
+        ignored: number;
+      }>;
     };
   };
 }

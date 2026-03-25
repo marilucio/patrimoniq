@@ -60,6 +60,11 @@ export class SettingsController {
     return this.settingsService.updateNotificationPreferences(auth, body);
   }
 
+  @Get("notifications")
+  getNotificationPreferences(@CurrentAuth() auth: AuthenticatedRequestContext) {
+    return this.settingsService.getNotificationPreferences(auth);
+  }
+
   @Post("diagnostics/email-test")
   sendEmailTest(@CurrentAuth() auth: AuthenticatedRequestContext) {
     return this.settingsService.sendEmailTest(auth);

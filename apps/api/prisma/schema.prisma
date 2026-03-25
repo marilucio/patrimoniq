@@ -168,6 +168,15 @@ enum AlertType {
   TAX
 }
 
+enum AdvisoryActionStatus {
+  SUGGESTED
+  VIEWED
+  COMPLETED
+  POSTPONED
+  DISMISSED
+  EXPIRED
+}
+
 enum InsightType {
   SAVINGS
   OPPORTUNITY
@@ -323,6 +332,8 @@ model User {
   recurringTransactions RecurringTransaction[]
   alerts              Alert[]
   createdAlerts       Alert[]              @relation("AlertCreatedBy")
+  advisoryActions     AdvisoryAction[]
+  advisoryActionEvents AdvisoryActionEvent[]
   insights            Insight[]
   createdInsights     Insight[]            @relation("InsightCreatedBy")
   subscriptions       Subscription[]
@@ -658,6 +669,52 @@ model Alert {
   createdByUser   User?          @relation("AlertCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([userId, severity, acknowledgedAt])
+}
+
+model AdvisoryAction {
+  id                String               @id @default(uuid())
+  userId            String
+  source            String
+  sourceRef         String
+  type              String
+  title             String
+  message           String
+  recommendation    String
+  priority          Int
+  status            AdvisoryActionStatus @default(SUGGESTED)
+  suggestionTone    String               @default("objetivo")
+  dueDate           DateTime?
+  postponedUntil    DateTime?
+  viewedAt          DateTime?
+  resolvedAt        DateTime?
+  feedback          String?
+  impactSummary     String?
+  impactScore       Int?
+  financialContext  Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events            AdvisoryActionEvent[]
+
+  @@unique([userId, sourceRef])
+  @@index([userId, status, priority])
+  @@index([userId, type, createdAt])
+}
+
+model AdvisoryActionEvent {
+  id               String               @id @default(uuid())
+  userId           String
+  advisoryActionId String
+  fromStatus       AdvisoryActionStatus?
+  toStatus         AdvisoryActionStatus
+  note             String?
+  metadata         Json?
+  occurredAt       DateTime             @default(now())
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  advisoryAction   AdvisoryAction       @relation(fields: [advisoryActionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, toStatus, occurredAt])
+  @@index([advisoryActionId, occurredAt])
 }
 
 model NotificationPreference {

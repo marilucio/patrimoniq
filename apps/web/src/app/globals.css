@@ -285,6 +285,20 @@ textarea {
   backdrop-filter: blur(16px);
 }
 
+.mobile-menu-trigger {
+  display: none;
+  padding: 0.5rem 0.78rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.mobile-sidebar-overlay {
+  display: none;
+}
+
 .topbar h1 {
   font-size: clamp(1.7rem, 3vw, 2.3rem);
 }
@@ -1437,6 +1451,47 @@ textarea {
   gap: 0.2rem;
 }
 
+.settings-page .section-card {
+  padding: 0.95rem;
+  gap: 0.65rem;
+}
+
+.settings-page .section-header {
+  gap: 0.55rem;
+}
+
+.settings-page .section-header p {
+  margin: 0.18rem 0 0;
+  font-size: 0.88rem;
+}
+
+.settings-page .stack-row {
+  padding: 0.7rem 0.8rem;
+}
+
+.settings-page .input-field input,
+.settings-page .input-field select,
+.settings-page .input-field textarea {
+  min-height: 42px;
+  padding: 0.55rem 0.72rem;
+}
+
+.bank-field {
+  grid-column: span 2;
+}
+
+.bank-suggestions {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.bank-suggestions .ghost-button {
+  justify-content: flex-start;
+  text-align: left;
+  width: 100%;
+}
+
 .toast-item.success {
   border-color: rgba(27, 141, 97, 0.18);
   background: linear-gradient(135deg, var(--positive-soft), rgba(255, 255, 255, 0.94));
@@ -1468,9 +1523,38 @@ textarea {
   }
 
   .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(84vw, 320px);
+    z-index: 50;
+    transform: translateX(-105%);
+    transition: transform 180ms ease;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 0;
     padding-bottom: 1.2rem;
-    border-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 48px rgba(11, 20, 34, 0.35);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .app-shell.menu-open .mobile-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    display: block;
+    border: 0;
+    background: rgba(6, 15, 26, 0.32);
+    box-shadow: none;
+  }
+
+  .mobile-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    line-height: 1;
   }
 
   .trend-summary {
@@ -1527,6 +1611,23 @@ textarea {
   .auth-card,
   .method-card {
     border-radius: 22px;
+  }
+
+  .topbar {
+    padding: 0.78rem 0.82rem;
+    gap: 0.55rem;
+  }
+
+  .topbar-actions {
+    width: 100%;
+  }
+
+  .topbar-actions .pill {
+    display: none;
+  }
+
+  .bank-field {
+    grid-column: span 1;
   }
 
   .data-table th,

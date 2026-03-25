@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { PropsWithChildren } from "react";
+import { useEffect, useState, type PropsWithChildren } from "react";
 import { useApiResource } from "../hooks/use-api-resource";
 import type { AuthSessionResponse } from "../lib/api";
 import { navigation } from "../lib/navigation";
@@ -22,6 +22,7 @@ function UserGreeting() {
 
 export function AppShell({ children }: PropsWithChildren) {
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const authRoutes = new Set(["/login", "/register", "/forgot-password", "/reset-password"]);
   const currentMonth = new Intl.DateTimeFormat("pt-BR", {
     month: "long",
@@ -43,9 +44,13 @@ export function AppShell({ children }: PropsWithChildren) {
     );
   }
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={`app-shell ${mobileMenuOpen ? "menu-open" : ""}`}>
+      <aside className={`sidebar ${mobileMenuOpen ? "open" : ""}`}>
         <div className="brand">
           <div className="brand-mark">P</div>
           <div>
@@ -86,6 +91,15 @@ export function AppShell({ children }: PropsWithChildren) {
 
       <div className="content-area">
         <header className="topbar">
+          <button
+            type="button"
+            className="mobile-menu-trigger"
+            onClick={() => setMobileMenuOpen((current) => !current)}
+            aria-label="Abrir menu de navegacao"
+            aria-expanded={mobileMenuOpen}
+          >
+            ☰
+          </button>
           <div>
             <span className="eyebrow">Financas pessoais</span>
             <h1>Seu dinheiro com clareza e menos ruido</h1>
@@ -100,6 +114,14 @@ export function AppShell({ children }: PropsWithChildren) {
 
         <main className="page-content">{children}</main>
       </div>
+      {mobileMenuOpen ? (
+        <button
+          type="button"
+          className="mobile-sidebar-overlay"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-label="Fechar menu"
+        />
+      ) : null}
 
       <FeedbackWidget />
     </div>

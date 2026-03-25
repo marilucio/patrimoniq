@@ -4,19 +4,25 @@ import Link from "next/link";
 import { useEffect, useTransition } from "react";
 import { calculateGoalProgress, formatCurrency } from "@patrimoniq/domain";
 import { ErrorState, LoadingState } from "../../components/page-state";
-import { EmptyState, PageIntro, ProgressBar, SectionCard, StatCard } from "../../components/ui";
+import {
+  EmptyState,
+  PageIntro,
+  ProgressBar,
+  SectionCard,
+  StatCard,
+} from "../../components/ui";
 import { useApiResource } from "../../hooks/use-api-resource";
 import {
   apiRequest,
   type AlertItem,
   type AlertsResponse,
-  type DashboardResponse
+  type DashboardResponse,
 } from "../../lib/api";
 
 const severityTone: Record<string, string> = {
   CRITICAL: "critical",
   WARNING: "warning",
-  INFO: "info"
+  INFO: "info",
 };
 
 function AlertsStrip(props: {
@@ -27,7 +33,11 @@ function AlertsStrip(props: {
   if (props.alerts.length === 0) return null;
 
   return (
-    <div className="alerts-strip" role="region" aria-label="Alertas financeiros">
+    <div
+      className="alerts-strip"
+      role="region"
+      aria-label="Alertas financeiros"
+    >
       {props.alerts.slice(0, 5).map((alert) => (
         <article
           key={alert.id}
@@ -38,12 +48,27 @@ function AlertsStrip(props: {
             <p>{alert.message}</p>
             {alert.recommendation ? (
               <div className="alert-recommendation">
-                <p><strong>O que aconteceu:</strong> {alert.recommendation.whatHappened}</p>
-                <p><strong>Por que importa:</strong> {alert.recommendation.whyItMatters}</p>
-                <p><strong>O que fazer agora:</strong> {alert.recommendation.whatToDoNow}</p>
-                <p><strong>Revisar novamente:</strong> {alert.recommendation.reviewAt}</p>
+                <p>
+                  <strong>O que aconteceu:</strong>{" "}
+                  {alert.recommendation.whatHappened}
+                </p>
+                <p>
+                  <strong>Por que importa:</strong>{" "}
+                  {alert.recommendation.whyItMatters}
+                </p>
+                <p>
+                  <strong>O que fazer agora:</strong>{" "}
+                  {alert.recommendation.whatToDoNow}
+                </p>
+                <p>
+                  <strong>Revisar novamente:</strong>{" "}
+                  {alert.recommendation.reviewAt}
+                </p>
                 {alert.recommendation.impactEstimate ? (
-                  <p><strong>Impacto estimado:</strong> {alert.recommendation.impactEstimate}</p>
+                  <p>
+                    <strong>Impacto estimado:</strong>{" "}
+                    {alert.recommendation.impactEstimate}
+                  </p>
                 ) : null}
               </div>
             ) : null}
@@ -77,8 +102,11 @@ function AlertsStrip(props: {
   );
 }
 
-function OnboardingCard(props: { onboarding: DashboardResponse["onboarding"] }) {
-  const progress = (props.onboarding.completedSteps / props.onboarding.totalSteps) * 100;
+function OnboardingCard(props: {
+  onboarding: DashboardResponse["onboarding"];
+}) {
+  const progress =
+    (props.onboarding.completedSteps / props.onboarding.totalSteps) * 100;
 
   return (
     <SectionCard
@@ -87,14 +115,17 @@ function OnboardingCard(props: { onboarding: DashboardResponse["onboarding"] }) 
       className="subtle-card"
       actions={
         <span className="pill">
-          {props.onboarding.completedSteps}/{props.onboarding.totalSteps} concluido(s)
+          {props.onboarding.completedSteps}/{props.onboarding.totalSteps}{" "}
+          concluido(s)
         </span>
       }
     >
       {props.onboarding.nextStep ? (
         <div className="soft-empty onboarding-focus">
           <strong>{props.onboarding.nextStep.title}</strong>
-          <p>{props.onboarding.nextStep.description ?? props.onboarding.nudge}</p>
+          <p>
+            {props.onboarding.nextStep.description ?? props.onboarding.nudge}
+          </p>
           <Link href={props.onboarding.nextStep.href} className="inline-link">
             {props.onboarding.nextStep.cta}
           </Link>
@@ -111,7 +142,11 @@ function OnboardingCard(props: { onboarding: DashboardResponse["onboarding"] }) 
         {props.onboarding.steps.map((step) => (
           <article key={step.id} className="stack-row checklist-row">
             <div className="checklist-copy">
-              <span className={step.done ? "checklist-badge done" : "checklist-badge"}>
+              <span
+                className={
+                  step.done ? "checklist-badge done" : "checklist-badge"
+                }
+              >
                 {step.done ? "Feito" : "Pendente"}
               </span>
               <strong>{step.title}</strong>
@@ -139,15 +174,24 @@ function DashboardGuideCard(props: { guide: string[] }) {
       <div className="guide-list">
         <article className="guide-row">
           <span className="guide-dot" />
-          <p><strong>Comece pelas configuracoes:</strong> crie sua conta bancaria e revise as categorias.</p>
+          <p>
+            <strong>Comece pelas configuracoes:</strong> crie sua conta bancaria
+            e revise as categorias.
+          </p>
         </article>
         <article className="guide-row">
           <span className="guide-dot" />
-          <p><strong>Lance receitas e despesas:</strong> cada lancamento atualiza automaticamente o painel.</p>
+          <p>
+            <strong>Lance receitas e despesas:</strong> cada lancamento atualiza
+            automaticamente o painel.
+          </p>
         </article>
         <article className="guide-row">
           <span className="guide-dot" />
-          <p><strong>Crie uma meta:</strong> defina um valor-alvo e acompanhe o progresso.</p>
+          <p>
+            <strong>Crie uma meta:</strong> defina um valor-alvo e acompanhe o
+            progresso.
+          </p>
         </article>
       </div>
 
@@ -166,9 +210,28 @@ function DashboardGuideCard(props: { guide: string[] }) {
   );
 }
 
+function actionStatusLabel(status?: string) {
+  if (status === "completed") return "Concluida";
+  if (status === "postponed") return "Adiada";
+  if (status === "dismissed") return "Dispensada";
+  if (status === "viewed") return "Em acompanhamento";
+  if (status === "expired") return "Expirada";
+  return "Sugerida";
+}
+
 function AdvisorActionPlanCard(props: {
   advisor: DashboardResponse["advisor"];
-  onTrackInteraction: (id: string, kind: "open" | "done", route: string) => void;
+  onTrackInteraction: (
+    id: string,
+    kind: "open" | "done" | "dismiss" | "postpone",
+    route: string,
+  ) => void;
+  onUpdateStatus: (
+    id: string,
+    status: "completed" | "postponed" | "dismissed",
+    route: string,
+    feedback?: string,
+  ) => void;
 }) {
   return (
     <SectionCard
@@ -194,26 +257,66 @@ function AdvisorActionPlanCard(props: {
           <article key={action.id} className="stack-row advisor-action-row">
             <div className="stack-head">
               <strong>{action.title}</strong>
-              <span>Prioridade {action.score}</span>
+              <span>
+                {actionStatusLabel(action.context.status)} · Prioridade{" "}
+                {action.score}
+              </span>
             </div>
-            <p>{action.reason}</p>
+            <p>{action.message}</p>
             <p>{action.impactEstimate}</p>
+            <p>{action.recommendation}</p>
             {action.dueDate ? <p>Revisar em {action.dueDate}</p> : null}
             <div className="alert-actions">
               <Link
                 href={action.route}
                 className="inline-link"
-                onClick={() => props.onTrackInteraction(action.id, "open", action.route)}
+                onClick={() =>
+                  props.onTrackInteraction(action.id, "open", action.route)
+                }
               >
                 {action.cta}
               </Link>
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => props.onTrackInteraction(action.id, "done", action.route)}
-              >
-                Marcar como concluido
-              </button>
+              {action.context.status !== "completed" &&
+              action.context.status !== "dismissed" ? (
+                <>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => {
+                      const feedback =
+                        window.prompt(
+                          "Como foi executar essa acao? (opcional)",
+                        ) ?? undefined;
+                      props.onUpdateStatus(
+                        action.id,
+                        "completed",
+                        action.route,
+                        feedback,
+                      );
+                    }}
+                  >
+                    Concluir
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() =>
+                      props.onUpdateStatus(action.id, "postponed", action.route)
+                    }
+                  >
+                    Adiar
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() =>
+                      props.onUpdateStatus(action.id, "dismissed", action.route)
+                    }
+                  >
+                    Dispensar
+                  </button>
+                </>
+              ) : null}
             </div>
           </article>
         ))}
@@ -222,7 +325,10 @@ function AdvisorActionPlanCard(props: {
   );
 }
 
-function AdvisorRoutineCard(props: { routine: DashboardResponse["advisor"]["routine"] }) {
+function AdvisorRoutineCard(props: {
+  routine: DashboardResponse["advisor"]["routine"];
+  consultiveAnalytics: DashboardResponse["advisor"]["consultiveAnalytics"];
+}) {
   return (
     <SectionCard
       title="Rotina financeira"
@@ -232,19 +338,37 @@ function AdvisorRoutineCard(props: { routine: DashboardResponse["advisor"]["rout
       <div className="guide-list">
         <article className="guide-row">
           <span className="guide-dot" />
-          <p><strong>Prioridade da semana:</strong> {props.routine.weeklyPriority}</p>
+          <p>
+            <strong>Prioridade da semana:</strong>{" "}
+            {props.routine.weeklyPriority}
+          </p>
         </article>
         <article className="guide-row">
           <span className="guide-dot" />
-          <p><strong>Revisao do mes:</strong> {props.routine.monthReview}</p>
+          <p>
+            <strong>Revisao do mes:</strong> {props.routine.monthReview}
+          </p>
         </article>
         <article className="guide-row">
           <span className="guide-dot" />
-          <p><strong>Consistencia de metas:</strong> {props.routine.goalConsistency}</p>
+          <p>
+            <strong>Consistencia de metas:</strong>{" "}
+            {props.routine.goalConsistency}
+          </p>
         </article>
         <article className="guide-row">
           <span className="guide-dot" />
-          <p><strong>Lembrete:</strong> {props.routine.followUpReminder}</p>
+          <p>
+            <strong>Lembrete:</strong> {props.routine.followUpReminder}
+          </p>
+        </article>
+        <article className="guide-row">
+          <span className="guide-dot" />
+          <p>
+            <strong>Aderencia consultiva:</strong>{" "}
+            {Math.round(props.consultiveAnalytics.completionRate * 100)}% de
+            conclusao nas acoes vistas
+          </p>
         </article>
       </div>
     </SectionCard>
@@ -252,18 +376,22 @@ function AdvisorRoutineCard(props: { routine: DashboardResponse["advisor"]["rout
 }
 
 export function DashboardClientPage() {
-  const { data, loading, error } = useApiResource<DashboardResponse>("/dashboard/overview");
+  const { data, loading, error } = useApiResource<DashboardResponse>(
+    "/dashboard/overview",
+  );
   const alerts = useApiResource<AlertsResponse>("/alerts");
   const [, startTransition] = useTransition();
 
   // Trigger alert evaluation on dashboard load
   useEffect(() => {
-    void apiRequest("/alerts/evaluate", { method: "POST" }).then(() => {
-      void alerts.reload();
-    }).catch(() => {
-      // Silent — alerts are non-critical
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    void apiRequest("/alerts/evaluate", { method: "POST" })
+      .then(() => {
+        void alerts.reload();
+      })
+      .catch(() => {
+        // Silent — alerts are non-critical
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function dismissAlert(id: string) {
@@ -276,17 +404,56 @@ export function DashboardClientPage() {
 
   function acknowledgeAlert(id: string) {
     startTransition(() => {
-      void apiRequest(`/alerts/${id}/acknowledge`, { method: "POST" }).then(() => {
-        void alerts.reload();
-      });
+      void apiRequest(`/alerts/${id}/acknowledge`, { method: "POST" }).then(
+        () => {
+          void alerts.reload();
+        },
+      );
     });
   }
 
-  function trackActionPlanInteraction(id: string, kind: "open" | "done", route: string) {
+  function trackActionPlanInteraction(
+    id: string,
+    kind: "open" | "done" | "dismiss" | "postpone",
+    route: string,
+  ) {
     startTransition(() => {
-      void apiRequest(`/dashboard/action-plan/${encodeURIComponent(id)}/interaction`, {
-        method: "POST",
-        body: { kind, route }
+      void apiRequest(
+        `/dashboard/action-plan/${encodeURIComponent(id)}/interaction`,
+        {
+          method: "POST",
+          body: { kind, route },
+        },
+      );
+    });
+  }
+
+  function updateActionStatus(
+    id: string,
+    status: "completed" | "postponed" | "dismissed",
+    route: string,
+    feedback?: string,
+  ) {
+    startTransition(() => {
+      void apiRequest(
+        `/dashboard/action-plan/${encodeURIComponent(id)}/status`,
+        {
+          method: "POST",
+          body: {
+            status,
+            feedback,
+          },
+        },
+      ).then(() => {
+        void trackActionPlanInteraction(
+          id,
+          status === "completed"
+            ? "done"
+            : status === "postponed"
+              ? "postpone"
+              : "dismiss",
+          route,
+        );
       });
     });
   }
@@ -300,7 +467,9 @@ export function DashboardClientPage() {
       <div className="page-grid">
         <ErrorState
           title="Visao geral indisponivel"
-          description={error ?? "Nao foi possivel carregar seu resumo financeiro."}
+          description={
+            error ?? "Nao foi possivel carregar seu resumo financeiro."
+          }
         />
       </div>
     );
@@ -336,7 +505,9 @@ export function DashboardClientPage() {
         eyebrow="Visao geral"
         title={`${data.userName}, este e o essencial do seu mes`}
         description="Saldo, compromissos e progresso das suas metas em um so lugar."
-        actions={<div className="hero-chip">Atualizado em {data.referenceMonth}</div>}
+        actions={
+          <div className="hero-chip">Atualizado em {data.referenceMonth}</div>
+        }
       />
 
       <AlertsStrip
@@ -349,17 +520,19 @@ export function DashboardClientPage() {
         <AdvisorActionPlanCard
           advisor={data.advisor}
           onTrackInteraction={trackActionPlanInteraction}
+          onUpdateStatus={updateActionStatus}
         />
-        <AdvisorRoutineCard routine={data.advisor.routine} />
+        <AdvisorRoutineCard
+          routine={data.advisor.routine}
+          consultiveAnalytics={data.advisor.consultiveAnalytics}
+        />
       </div>
 
       <section className="dashboard-hero">
         <div className="dashboard-balance">
           <span className="eyebrow">Saldo do mes</span>
           <strong>{formatCurrency(data.summary.balanceMonth)}</strong>
-          <p>
-            Resultado acumulado do mes ate o momento.
-          </p>
+          <p>Resultado acumulado do mes ate o momento.</p>
 
           <div className="metric-strip">
             <article className="metric-tile positive">
@@ -371,7 +544,11 @@ export function DashboardClientPage() {
               <strong>{formatCurrency(data.summary.expenses)}</strong>
             </article>
             <article
-              className={data.summary.leftover >= 0 ? "metric-tile positive" : "metric-tile warning"}
+              className={
+                data.summary.leftover >= 0
+                  ? "metric-tile positive"
+                  : "metric-tile warning"
+              }
             >
               <span>Quanto sobra</span>
               <strong>{formatCurrency(data.summary.leftover)}</strong>
@@ -443,9 +620,13 @@ export function DashboardClientPage() {
                     <strong>{goal.name}</strong>
                     <span>{Math.round(calculateGoalProgress(goal))}%</span>
                   </div>
-                  <ProgressBar value={calculateGoalProgress(goal)} tone="positive" />
+                  <ProgressBar
+                    value={calculateGoalProgress(goal)}
+                    tone="positive"
+                  />
                   <p>
-                    {formatCurrency(goal.currentAmount)} de {formatCurrency(goal.targetAmount)}
+                    {formatCurrency(goal.currentAmount)} de{" "}
+                    {formatCurrency(goal.targetAmount)}
                     {goal.targetDate ? ` · alvo em ${goal.targetDate}` : ""}
                   </p>
                 </div>

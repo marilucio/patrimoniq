@@ -8,7 +8,7 @@ import {
   FormActions,
   InputField,
   SelectField,
-  TextAreaField
+  TextAreaField,
 } from "../../components/form-controls";
 import { PageIntro, SectionCard } from "../../components/ui";
 import { useToast } from "../../components/toast-provider";
@@ -24,7 +24,7 @@ import {
   type ProfileUpdateResponse,
   type SessionsResponse,
   type SettingsResponse,
-  type SubcategoriesResponse
+  type SubcategoriesResponse,
 } from "../../lib/api";
 import { notifyDataChanged } from "../../lib/live-data";
 import {
@@ -33,21 +33,21 @@ import {
   costNatureOptions,
   essentialityOptions,
   humanizeEnum,
-  slugify
+  slugify,
 } from "../../lib/options";
 
 const emptyAccountForm = {
   name: "",
   type: "CHECKING",
   institutionName: "",
-  openingBalance: ""
+  openingBalance: "",
 };
 
 const emptyCategoryForm = {
   name: "",
   slug: "",
   direction: "EXPENSE",
-  subcategoriesText: ""
+  subcategoriesText: "",
 };
 
 const emptySubcategoryForm = {
@@ -55,24 +55,40 @@ const emptySubcategoryForm = {
   name: "",
   slug: "",
   costNature: "",
-  essentiality: ""
+  essentiality: "",
 };
 
 const localeOptions = [
   { value: "pt-BR", label: "Portugues (Brasil)" },
-  { value: "en-US", label: "English (US)" }
+  { value: "en-US", label: "English (US)" },
 ];
 
 const currencyOptions = [
   { value: "BRL", label: "Real (BRL)" },
   { value: "USD", label: "Dolar (USD)" },
-  { value: "EUR", label: "Euro (EUR)" }
+  { value: "EUR", label: "Euro (EUR)" },
 ];
 
 const dateFormatOptions = [
   { value: "DD/MM/YYYY", label: "DD/MM/AAAA" },
   { value: "MM/DD/YYYY", label: "MM/DD/AAAA" },
-  { value: "YYYY-MM-DD", label: "AAAA-MM-DD" }
+  { value: "YYYY-MM-DD", label: "AAAA-MM-DD" },
+];
+
+const bankCatalog = [
+  { code: "001", name: "Banco do Brasil" },
+  { code: "033", name: "Santander" },
+  { code: "104", name: "Caixa Economica Federal" },
+  { code: "237", name: "Bradesco" },
+  { code: "341", name: "Itaú" },
+  { code: "260", name: "Nubank" },
+  { code: "077", name: "Banco Inter" },
+  { code: "336", name: "C6 Bank" },
+  { code: "290", name: "PagBank" },
+  { code: "655", name: "Votorantim" },
+  { code: "422", name: "Safra" },
+  { code: "745", name: "Citibank" },
+  { code: "212", name: "Banco Original" },
 ];
 
 function readStoredPreference(key: string, fallback: string): string {
@@ -93,7 +109,7 @@ function formatSessionDate(iso: string): string {
       month: "2-digit",
       year: "numeric",
       hour: "2-digit",
-      minute: "2-digit"
+      minute: "2-digit",
     });
   } catch {
     return iso;
@@ -115,6 +131,16 @@ export function SettingsClientPage() {
   const categories = useApiResource<CategoriesResponse>("/categories");
   const subcategories = useApiResource<SubcategoriesResponse>("/subcategories");
   const sessions = useApiResource<SessionsResponse>("/settings/sessions");
+  const notifications = useApiResource<{
+    success: boolean;
+    preferences: {
+      emailAlerts: boolean;
+      weeklyDigest: boolean;
+      dueDateReminders: boolean;
+      budgetAlerts: boolean;
+      pushEnabled: boolean;
+    };
+  }>("/settings/notifications");
   const { showToast } = useToast();
 
   // Profile form
@@ -137,10 +163,10 @@ export function SettingsClientPage() {
 
   // Preferences form
   const [prefCurrency, setPrefCurrency] = useState(() =>
-    readStoredPreference("currency", "BRL")
+    readStoredPreference("currency", "BRL"),
   );
   const [prefDateFormat, setPrefDateFormat] = useState(() =>
-    readStoredPreference("dateFormat", "DD/MM/YYYY")
+    readStoredPreference("dateFormat", "DD/MM/YYYY"),
   );
   const [prefFeedback, setPrefFeedback] = useState<{
     tone: "success" | "error";
@@ -148,17 +174,17 @@ export function SettingsClientPage() {
   } | null>(null);
 
   // Notification preferences
-  const [notifEmailAlerts, setNotifEmailAlerts] = useState(() =>
-    readStoredPreference("notif_emailAlerts", "true") === "true"
+  const [notifEmailAlerts, setNotifEmailAlerts] = useState(
+    () => readStoredPreference("notif_emailAlerts", "true") === "true",
   );
-  const [notifWeeklyDigest, setNotifWeeklyDigest] = useState(() =>
-    readStoredPreference("notif_weeklyDigest", "false") === "true"
+  const [notifWeeklyDigest, setNotifWeeklyDigest] = useState(
+    () => readStoredPreference("notif_weeklyDigest", "false") === "true",
   );
-  const [notifDueDate, setNotifDueDate] = useState(() =>
-    readStoredPreference("notif_dueDateReminders", "true") === "true"
+  const [notifDueDate, setNotifDueDate] = useState(
+    () => readStoredPreference("notif_dueDateReminders", "true") === "true",
   );
-  const [notifBudget, setNotifBudget] = useState(() =>
-    readStoredPreference("notif_budgetAlerts", "true") === "true"
+  const [notifBudget, setNotifBudget] = useState(
+    () => readStoredPreference("notif_budgetAlerts", "true") === "true",
   );
   const [notifFeedback, setNotifFeedback] = useState<{
     tone: "success" | "error";
@@ -171,16 +197,34 @@ export function SettingsClientPage() {
   const [categoryForm, setCategoryForm] = useState(emptyCategoryForm);
   const [subcategoryForm, setSubcategoryForm] = useState(emptySubcategoryForm);
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [editingSubcategoryId, setEditingSubcategoryId] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(
-    null
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
+    null,
   );
+  const [editingSubcategoryId, setEditingSubcategoryId] = useState<
+    string | null
+  >(null);
+  const [feedback, setFeedback] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [customBanks, setCustomBanks] = useState<
+    Array<{ code: string; name: string }>
+  >([]);
+  const [bankSearch, setBankSearch] = useState("");
 
   const loading =
-    settings.loading || accounts.loading || categories.loading || subcategories.loading;
-  const error = settings.error ?? accounts.error ?? categories.error ?? subcategories.error;
+    settings.loading ||
+    accounts.loading ||
+    categories.loading ||
+    subcategories.loading ||
+    notifications.loading;
+  const error =
+    settings.error ??
+    accounts.error ??
+    categories.error ??
+    subcategories.error ??
+    notifications.error;
 
   // Sync profile form when settings load
   const profile = settings.data?.profile;
@@ -190,27 +234,54 @@ export function SettingsClientPage() {
   }
 
   useEffect(() => {
-    if (!settings.data || notifHydratedFromServer) return;
-    const notificationPreferences = settings.data.notificationPreferences ?? {
-      emailAlerts: notifEmailAlerts,
-      weeklyDigest: notifWeeklyDigest,
-      dueDateReminders: notifDueDate,
-      budgetAlerts: notifBudget,
-      pushEnabled: false
-    };
+    if (notifHydratedFromServer) return;
+    const notificationPreferences = notifications.data?.preferences ??
+      settings.data?.notificationPreferences ?? {
+        emailAlerts: notifEmailAlerts,
+        weeklyDigest: notifWeeklyDigest,
+        dueDateReminders: notifDueDate,
+        budgetAlerts: notifBudget,
+        pushEnabled: false,
+      };
     setNotifEmailAlerts(notificationPreferences.emailAlerts);
     setNotifWeeklyDigest(notificationPreferences.weeklyDigest);
     setNotifDueDate(notificationPreferences.dueDateReminders);
     setNotifBudget(notificationPreferences.budgetAlerts);
     setNotifHydratedFromServer(true);
-  }, [notifBudget, notifDueDate, notifEmailAlerts, notifHydratedFromServer, notifWeeklyDigest, settings.data]);
+  }, [
+    notifBudget,
+    notifDueDate,
+    notifEmailAlerts,
+    notifHydratedFromServer,
+    notifWeeklyDigest,
+    notifications.data?.preferences,
+    settings.data?.notificationPreferences,
+  ]);
+
+  const availableBanks = [...bankCatalog, ...customBanks];
+  const normalizedBankSearch = bankSearch.trim().toLowerCase();
+  const filteredBanks =
+    normalizedBankSearch.length === 0
+      ? availableBanks.slice(0, 8)
+      : availableBanks
+          .filter(
+            (bank) =>
+              bank.name.toLowerCase().includes(normalizedBankSearch) ||
+              bank.code.includes(normalizedBankSearch),
+          )
+          .slice(0, 12);
+  const hasExactBank = availableBanks.some(
+    (bank) =>
+      `${bank.code} - ${bank.name}`.toLowerCase() === normalizedBankSearch ||
+      bank.name.toLowerCase() === normalizedBankSearch,
+  );
 
   async function refreshAll() {
     await Promise.all([
       settings.reload(),
       accounts.reload(),
       categories.reload(),
-      subcategories.reload()
+      subcategories.reload(),
     ]);
     notifyDataChanged();
   }
@@ -226,8 +297,8 @@ export function SettingsClientPage() {
         method: "PATCH",
         body: {
           fullName: profileName,
-          locale: profileLocale
-        }
+          locale: profileLocale,
+        },
       })
         .then(async (response) => {
           setProfileFeedback({ tone: "success", message: response.message });
@@ -252,7 +323,7 @@ export function SettingsClientPage() {
     if (newPassword.length < 8) {
       setPasswordFeedback({
         tone: "error",
-        message: "A nova senha precisa ter pelo menos 8 caracteres."
+        message: "A nova senha precisa ter pelo menos 8 caracteres.",
       });
       return;
     }
@@ -260,7 +331,7 @@ export function SettingsClientPage() {
     if (newPassword !== confirmPassword) {
       setPasswordFeedback({
         tone: "error",
-        message: "As senhas digitadas nao coincidem."
+        message: "As senhas digitadas nao coincidem.",
       });
       return;
     }
@@ -268,7 +339,7 @@ export function SettingsClientPage() {
     startTransition(() => {
       void apiRequest<PasswordChangeResponse>("/settings/password", {
         method: "POST",
-        body: { currentPassword, newPassword }
+        body: { currentPassword, newPassword },
       })
         .then((response) => {
           setPasswordFeedback({ tone: "success", message: response.message });
@@ -291,9 +362,12 @@ export function SettingsClientPage() {
     if (!window.confirm("Encerrar todas as outras sessoes ativas?")) return;
 
     startTransition(() => {
-      void apiRequest<{ success: boolean; message: string }>("/settings/sessions/revoke-others", {
-        method: "POST"
-      })
+      void apiRequest<{ success: boolean; message: string }>(
+        "/settings/sessions/revoke-others",
+        {
+          method: "POST",
+        },
+      )
         .then((response) => {
           showToast({ tone: "success", message: response.message });
           void sessions.reload();
@@ -313,7 +387,7 @@ export function SettingsClientPage() {
     startTransition(() => {
       void apiRequest<PreferencesResponse>("/settings/preferences", {
         method: "PATCH",
-        body: { currency: prefCurrency, dateFormat: prefDateFormat }
+        body: { currency: prefCurrency, dateFormat: prefDateFormat },
       })
         .then((response) => {
           storePreference("currency", response.preferences.currency);
@@ -330,7 +404,9 @@ export function SettingsClientPage() {
 
   // ── Notification Preferences ──
 
-  function submitNotificationPreferences(event: React.FormEvent<HTMLFormElement>) {
+  function submitNotificationPreferences(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
     setNotifFeedback(null);
 
@@ -343,21 +419,35 @@ export function SettingsClientPage() {
             emailAlerts: notifEmailAlerts,
             weeklyDigest: notifWeeklyDigest,
             dueDateReminders: notifDueDate,
-            budgetAlerts: notifBudget
-          }
-        }
+            budgetAlerts: notifBudget,
+          },
+        },
       )
         .then((response) => {
-          storePreference("notif_emailAlerts", String(response.preferences.emailAlerts));
-          storePreference("notif_weeklyDigest", String(response.preferences.weeklyDigest));
-          storePreference("notif_dueDateReminders", String(response.preferences.dueDateReminders));
-          storePreference("notif_budgetAlerts", String(response.preferences.budgetAlerts));
+          storePreference(
+            "notif_emailAlerts",
+            String(response.preferences.emailAlerts),
+          );
+          storePreference(
+            "notif_weeklyDigest",
+            String(response.preferences.weeklyDigest),
+          );
+          storePreference(
+            "notif_dueDateReminders",
+            String(response.preferences.dueDateReminders),
+          );
+          storePreference(
+            "notif_budgetAlerts",
+            String(response.preferences.budgetAlerts),
+          );
           setNotifEmailAlerts(response.preferences.emailAlerts);
           setNotifWeeklyDigest(response.preferences.weeklyDigest);
           setNotifDueDate(response.preferences.dueDateReminders);
           setNotifBudget(response.preferences.budgetAlerts);
           setNotifFeedback({ tone: "success", message: response.message });
           showToast({ tone: "success", message: response.message });
+          void notifications.reload();
+          void settings.reload();
         })
         .catch((requestError) => {
           const message = readApiError(requestError);
@@ -370,6 +460,7 @@ export function SettingsClientPage() {
 
   function resetAccountForm() {
     setAccountForm(emptyAccountForm);
+    setBankSearch("");
     setEditingAccountId(null);
   }
 
@@ -389,8 +480,9 @@ export function SettingsClientPage() {
       name: item.name,
       type: item.typeCode,
       institutionName: item.institutionName ?? "",
-      openingBalance: String(item.openingBalance)
+      openingBalance: String(item.openingBalance),
     });
+    setBankSearch(item.institutionName ?? "");
     setFeedback(null);
   }
 
@@ -400,7 +492,9 @@ export function SettingsClientPage() {
       name: item.name,
       slug: item.slug,
       direction: item.directionCode,
-      subcategoriesText: item.subcategories.map((subcategory) => subcategory.name).join("\n")
+      subcategoriesText: item.subcategories
+        .map((subcategory) => subcategory.name)
+        .join("\n"),
     });
     setFeedback(null);
   }
@@ -412,7 +506,7 @@ export function SettingsClientPage() {
       name: item.name,
       slug: item.slug,
       costNature: item.costNature ?? "",
-      essentiality: item.essentiality ?? ""
+      essentiality: item.essentiality ?? "",
     });
     setFeedback(null);
   }
@@ -422,24 +516,27 @@ export function SettingsClientPage() {
     setFeedback(null);
 
     startTransition(() => {
-      void apiRequest(editingAccountId ? `/accounts/${editingAccountId}` : "/accounts", {
-        method: editingAccountId ? "PATCH" : "POST",
-        body: {
-          name: accountForm.name,
-          type: accountForm.type,
-          ...(accountForm.institutionName
-            ? { institutionName: accountForm.institutionName }
-            : {}),
-          ...(accountForm.openingBalance
-            ? { openingBalance: Number(accountForm.openingBalance) }
-            : {})
-        }
-      })
+      void apiRequest(
+        editingAccountId ? `/accounts/${editingAccountId}` : "/accounts",
+        {
+          method: editingAccountId ? "PATCH" : "POST",
+          body: {
+            name: accountForm.name,
+            type: accountForm.type,
+            ...(accountForm.institutionName
+              ? { institutionName: accountForm.institutionName }
+              : {}),
+            ...(accountForm.openingBalance
+              ? { openingBalance: Number(accountForm.openingBalance) }
+              : {}),
+          },
+        },
+      )
         .then(async () => {
           await refreshAll();
           showToast({
             tone: "success",
-            message: editingAccountId ? "Conta atualizada." : "Conta criada."
+            message: editingAccountId ? "Conta atualizada." : "Conta criada.",
           });
           resetAccountForm();
         })
@@ -461,26 +558,31 @@ export function SettingsClientPage() {
       .filter(Boolean)
       .map((name) => ({
         name,
-        slug: slugify(name)
+        slug: slugify(name),
       }));
 
     startTransition(() => {
-      void apiRequest(editingCategoryId ? `/categories/${editingCategoryId}` : "/categories", {
-        method: editingCategoryId ? "PATCH" : "POST",
-        body: {
-          name: categoryForm.name,
-          slug: categoryForm.slug || slugify(categoryForm.name),
-          direction: categoryForm.direction,
-          ...(!editingCategoryId && nestedSubcategories.length > 0
-            ? { subcategories: nestedSubcategories }
-            : {})
-        }
-      })
+      void apiRequest(
+        editingCategoryId ? `/categories/${editingCategoryId}` : "/categories",
+        {
+          method: editingCategoryId ? "PATCH" : "POST",
+          body: {
+            name: categoryForm.name,
+            slug: categoryForm.slug || slugify(categoryForm.name),
+            direction: categoryForm.direction,
+            ...(!editingCategoryId && nestedSubcategories.length > 0
+              ? { subcategories: nestedSubcategories }
+              : {}),
+          },
+        },
+      )
         .then(async () => {
           await refreshAll();
           showToast({
             tone: "success",
-            message: editingCategoryId ? "Categoria atualizada." : "Categoria criada."
+            message: editingCategoryId
+              ? "Categoria atualizada."
+              : "Categoria criada.",
           });
           resetCategoryForm();
         })
@@ -498,19 +600,23 @@ export function SettingsClientPage() {
 
     startTransition(() => {
       void apiRequest(
-        editingSubcategoryId ? `/subcategories/${editingSubcategoryId}` : "/subcategories",
+        editingSubcategoryId
+          ? `/subcategories/${editingSubcategoryId}`
+          : "/subcategories",
         {
           method: editingSubcategoryId ? "PATCH" : "POST",
           body: {
             categoryId: subcategoryForm.categoryId,
             name: subcategoryForm.name,
             slug: subcategoryForm.slug || slugify(subcategoryForm.name),
-            ...(subcategoryForm.costNature ? { costNature: subcategoryForm.costNature } : {}),
+            ...(subcategoryForm.costNature
+              ? { costNature: subcategoryForm.costNature }
+              : {}),
             ...(subcategoryForm.essentiality
               ? { essentiality: subcategoryForm.essentiality }
-              : {})
-          }
-        }
+              : {}),
+          },
+        },
       )
         .then(async () => {
           await refreshAll();
@@ -518,7 +624,7 @@ export function SettingsClientPage() {
             tone: "success",
             message: editingSubcategoryId
               ? "Subcategoria atualizada."
-              : "Subcategoria criada."
+              : "Subcategoria criada.",
           });
           resetSubcategoryForm();
         })
@@ -547,7 +653,8 @@ export function SettingsClientPage() {
   }
 
   function archiveCategory(id: string) {
-    if (!window.confirm("Arquivar esta categoria e suas subcategorias?")) return;
+    if (!window.confirm("Arquivar esta categoria e suas subcategorias?"))
+      return;
 
     startTransition(() => {
       void apiRequest(`/categories/${id}`, { method: "DELETE" })
@@ -593,7 +700,9 @@ export function SettingsClientPage() {
       <div className="page-grid">
         <ErrorState
           title="Configuracoes indisponiveis"
-          description={error ?? "Nao foi possivel carregar as configuracoes da sua conta."}
+          description={
+            error ?? "Nao foi possivel carregar as configuracoes da sua conta."
+          }
         />
       </div>
     );
@@ -603,7 +712,7 @@ export function SettingsClientPage() {
   const otherSessionCount = sessionItems.filter((s) => !s.isCurrent).length;
 
   return (
-    <div className="page-grid">
+    <div className="page-grid settings-page">
       <PageIntro
         eyebrow="Configuracoes"
         title="Sua conta"
@@ -646,7 +755,10 @@ export function SettingsClientPage() {
             </div>
 
             {profileFeedback ? (
-              <FeedbackBanner tone={profileFeedback.tone} message={profileFeedback.message} />
+              <FeedbackBanner
+                tone={profileFeedback.tone}
+                message={profileFeedback.message}
+              />
             ) : null}
 
             <FormActions submitLabel="Salvar perfil" pending={isPending} />
@@ -689,7 +801,10 @@ export function SettingsClientPage() {
             </div>
 
             {passwordFeedback ? (
-              <FeedbackBanner tone={passwordFeedback.tone} message={passwordFeedback.message} />
+              <FeedbackBanner
+                tone={passwordFeedback.tone}
+                message={passwordFeedback.message}
+              />
             ) : null}
 
             <FormActions submitLabel="Alterar senha" pending={isPending} />
@@ -732,8 +847,8 @@ export function SettingsClientPage() {
                     <span>{session.ipAddress ?? "IP desconhecido"}</span>
                   </div>
                   <p>
-                    Ultimo acesso em {formatSessionDate(session.lastSeenAt)} · criada em{" "}
-                    {formatSessionDate(session.createdAt)}
+                    Ultimo acesso em {formatSessionDate(session.lastSeenAt)} ·
+                    criada em {formatSessionDate(session.createdAt)}
                   </p>
                 </div>
               ))}
@@ -761,15 +876,27 @@ export function SettingsClientPage() {
             </div>
 
             {prefFeedback ? (
-              <FeedbackBanner tone={prefFeedback.tone} message={prefFeedback.message} />
+              <FeedbackBanner
+                tone={prefFeedback.tone}
+                message={prefFeedback.message}
+              />
             ) : null}
 
-            <FormActions submitLabel="Salvar preferencias" pending={isPending} />
+            <FormActions
+              submitLabel="Salvar preferencias"
+              pending={isPending}
+            />
           </form>
         </SectionCard>
 
-        <SectionCard title="Notificacoes" subtitle="Escolha como receber alertas">
-          <form className="editor-form" onSubmit={submitNotificationPreferences}>
+        <SectionCard
+          title="Notificacoes"
+          subtitle="Escolha como receber alertas"
+        >
+          <form
+            className="editor-form"
+            onSubmit={submitNotificationPreferences}
+          >
             <div className="toggle-list">
               <label className="toggle-row">
                 <input
@@ -818,26 +945,40 @@ export function SettingsClientPage() {
             </div>
 
             {notifFeedback ? (
-              <FeedbackBanner tone={notifFeedback.tone} message={notifFeedback.message} />
+              <FeedbackBanner
+                tone={notifFeedback.tone}
+                message={notifFeedback.message}
+              />
             ) : null}
 
-            <FormActions submitLabel="Salvar notificacoes" pending={isPending} />
+            <FormActions
+              submitLabel="Salvar notificacoes"
+              pending={isPending}
+            />
           </form>
         </SectionCard>
       </div>
 
-      {feedback ? <FeedbackBanner tone={feedback.tone} message={feedback.message} /> : null}
+      {feedback ? (
+        <FeedbackBanner tone={feedback.tone} message={feedback.message} />
+      ) : null}
 
       {/* ── Accounts + Categories ── */}
       <div className="two-column">
-        <SectionCard title={editingAccountId ? "Editar conta" : "Nova conta"} subtitle="Contas e saldos iniciais">
+        <SectionCard
+          title={editingAccountId ? "Editar conta" : "Nova conta"}
+          subtitle="Contas e saldos iniciais"
+        >
           <form className="editor-form" onSubmit={submitAccount}>
             <div className="form-grid">
               <InputField
                 label="Nome"
                 value={accountForm.name}
                 onChange={(event) =>
-                  setAccountForm((current) => ({ ...current, name: event.target.value }))
+                  setAccountForm((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
                 }
                 required
               />
@@ -845,23 +986,72 @@ export function SettingsClientPage() {
                 label="Tipo"
                 value={accountForm.type}
                 onChange={(event) =>
-                  setAccountForm((current) => ({ ...current, type: event.target.value }))
+                  setAccountForm((current) => ({
+                    ...current,
+                    type: event.target.value,
+                  }))
                 }
                 options={accountTypeOptions.map((option) => ({
                   value: option,
-                  label: humanizeEnum(option)
+                  label: humanizeEnum(option),
                 }))}
               />
-              <InputField
-                label="Instituicao"
-                value={accountForm.institutionName}
-                onChange={(event) =>
-                  setAccountForm((current) => ({
-                    ...current,
-                    institutionName: event.target.value
-                  }))
-                }
-              />
+              <label className="input-field bank-field">
+                <div className="input-label-row">
+                  <span>Banco ou instituicao</span>
+                  <small>Busque por nome ou codigo</small>
+                </div>
+                <input
+                  value={accountForm.institutionName}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setBankSearch(value);
+                    setAccountForm((current) => ({
+                      ...current,
+                      institutionName: value,
+                    }));
+                  }}
+                  placeholder="Ex.: 341 - Itaú"
+                />
+                <div className="bank-suggestions">
+                  {filteredBanks.map((bank) => (
+                    <button
+                      key={`${bank.code}-${bank.name}`}
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => {
+                        const label = `${bank.code} - ${bank.name}`;
+                        setBankSearch(label);
+                        setAccountForm((current) => ({
+                          ...current,
+                          institutionName: label,
+                        }));
+                      }}
+                    >
+                      {bank.code} · {bank.name}
+                    </button>
+                  ))}
+                  {normalizedBankSearch.length >= 3 && !hasExactBank ? (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => {
+                        const customEntry = {
+                          code: "999",
+                          name: bankSearch.trim(),
+                        };
+                        setCustomBanks((current) => [customEntry, ...current]);
+                        setAccountForm((current) => ({
+                          ...current,
+                          institutionName: customEntry.name,
+                        }));
+                      }}
+                    >
+                      Adicionar "{bankSearch.trim()}" na lista
+                    </button>
+                  ) : null}
+                </div>
+              </label>
               <InputField
                 label="Saldo inicial"
                 type="number"
@@ -871,7 +1061,7 @@ export function SettingsClientPage() {
                 onChange={(event) =>
                   setAccountForm((current) => ({
                     ...current,
-                    openingBalance: event.target.value
+                    openingBalance: event.target.value,
                   }))
                 }
               />
@@ -892,11 +1082,15 @@ export function SettingsClientPage() {
                   <span>{account.type}</span>
                 </div>
                 <p>
-                  Saldo inicial {formatCurrency(account.openingBalance)} · saldo atual{" "}
-                  {formatCurrency(account.currentBalance)}
+                  Saldo inicial {formatCurrency(account.openingBalance)} · saldo
+                  atual {formatCurrency(account.currentBalance)}
                 </p>
                 <div className="list-actions">
-                  <button type="button" className="ghost-button" onClick={() => loadAccount(account)}>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => loadAccount(account)}
+                  >
                     Editar
                   </button>
                   <button
@@ -912,7 +1106,10 @@ export function SettingsClientPage() {
           </div>
         </SectionCard>
 
-        <SectionCard title={editingCategoryId ? "Editar categoria" : "Nova categoria"} subtitle="Organize seu mapa financeiro">
+        <SectionCard
+          title={editingCategoryId ? "Editar categoria" : "Nova categoria"}
+          subtitle="Organize seu mapa financeiro"
+        >
           <form className="editor-form" onSubmit={submitCategory}>
             <div className="form-grid">
               <InputField
@@ -922,7 +1119,7 @@ export function SettingsClientPage() {
                   setCategoryForm((current) => ({
                     ...current,
                     name: event.target.value,
-                    slug: slugify(event.target.value)
+                    slug: slugify(event.target.value),
                   }))
                 }
                 required
@@ -931,7 +1128,10 @@ export function SettingsClientPage() {
                 label="Slug"
                 value={categoryForm.slug}
                 onChange={(event) =>
-                  setCategoryForm((current) => ({ ...current, slug: event.target.value }))
+                  setCategoryForm((current) => ({
+                    ...current,
+                    slug: event.target.value,
+                  }))
                 }
                 required
               />
@@ -939,11 +1139,14 @@ export function SettingsClientPage() {
                 label="Direcao"
                 value={categoryForm.direction}
                 onChange={(event) =>
-                  setCategoryForm((current) => ({ ...current, direction: event.target.value }))
+                  setCategoryForm((current) => ({
+                    ...current,
+                    direction: event.target.value,
+                  }))
                 }
                 options={categoryDirectionOptions.map((option) => ({
                   value: option,
-                  label: humanizeEnum(option)
+                  label: humanizeEnum(option),
                 }))}
               />
             </div>
@@ -955,7 +1158,7 @@ export function SettingsClientPage() {
               onChange={(event) =>
                 setCategoryForm((current) => ({
                   ...current,
-                  subcategoriesText: event.target.value
+                  subcategoriesText: event.target.value,
                 }))
               }
               hint={
@@ -966,7 +1169,9 @@ export function SettingsClientPage() {
             />
 
             <FormActions
-              submitLabel={editingCategoryId ? "Salvar categoria" : "Criar categoria"}
+              submitLabel={
+                editingCategoryId ? "Salvar categoria" : "Criar categoria"
+              }
               cancelLabel={editingCategoryId ? "Cancelar" : undefined}
               onCancel={editingCategoryId ? resetCategoryForm : undefined}
               pending={isPending}
@@ -1012,7 +1217,12 @@ export function SettingsClientPage() {
 
       {/* ── Subcategories ── */}
       <div className="two-column">
-        <SectionCard title={editingSubcategoryId ? "Editar subcategoria" : "Nova subcategoria"} subtitle="Detalhe fino para transacoes e orcamentos">
+        <SectionCard
+          title={
+            editingSubcategoryId ? "Editar subcategoria" : "Nova subcategoria"
+          }
+          subtitle="Detalhe fino para transacoes e orcamentos"
+        >
           <form className="editor-form" onSubmit={submitSubcategory}>
             <div className="form-grid">
               <SelectField
@@ -1021,12 +1231,12 @@ export function SettingsClientPage() {
                 onChange={(event) =>
                   setSubcategoryForm((current) => ({
                     ...current,
-                    categoryId: event.target.value
+                    categoryId: event.target.value,
                   }))
                 }
                 options={categories.data.items.map((category) => ({
                   value: category.id,
-                  label: category.name
+                  label: category.name,
                 }))}
               />
               <InputField
@@ -1036,7 +1246,7 @@ export function SettingsClientPage() {
                   setSubcategoryForm((current) => ({
                     ...current,
                     name: event.target.value,
-                    slug: slugify(event.target.value)
+                    slug: slugify(event.target.value),
                   }))
                 }
                 required
@@ -1045,7 +1255,10 @@ export function SettingsClientPage() {
                 label="Slug"
                 value={subcategoryForm.slug}
                 onChange={(event) =>
-                  setSubcategoryForm((current) => ({ ...current, slug: event.target.value }))
+                  setSubcategoryForm((current) => ({
+                    ...current,
+                    slug: event.target.value,
+                  }))
                 }
                 required
               />
@@ -1055,12 +1268,12 @@ export function SettingsClientPage() {
                 onChange={(event) =>
                   setSubcategoryForm((current) => ({
                     ...current,
-                    costNature: event.target.value
+                    costNature: event.target.value,
                   }))
                 }
                 options={costNatureOptions.map((option) => ({
                   value: option,
-                  label: humanizeEnum(option)
+                  label: humanizeEnum(option),
                 }))}
               />
               <SelectField
@@ -1069,18 +1282,22 @@ export function SettingsClientPage() {
                 onChange={(event) =>
                   setSubcategoryForm((current) => ({
                     ...current,
-                    essentiality: event.target.value
+                    essentiality: event.target.value,
                   }))
                 }
                 options={essentialityOptions.map((option) => ({
                   value: option,
-                  label: humanizeEnum(option)
+                  label: humanizeEnum(option),
                 }))}
               />
             </div>
 
             <FormActions
-              submitLabel={editingSubcategoryId ? "Salvar subcategoria" : "Criar subcategoria"}
+              submitLabel={
+                editingSubcategoryId
+                  ? "Salvar subcategoria"
+                  : "Criar subcategoria"
+              }
               cancelLabel={editingSubcategoryId ? "Cancelar" : undefined}
               onCancel={editingSubcategoryId ? resetSubcategoryForm : undefined}
               pending={isPending}
@@ -1095,7 +1312,10 @@ export function SettingsClientPage() {
                   <span>{subcategory.categoryName}</span>
                 </div>
                 <p>
-                  {subcategory.costNature ? humanizeEnum(subcategory.costNature) : "Sem natureza"} ·{" "}
+                  {subcategory.costNature
+                    ? humanizeEnum(subcategory.costNature)
+                    : "Sem natureza"}{" "}
+                  ·{" "}
                   {subcategory.essentiality
                     ? humanizeEnum(subcategory.essentiality)
                     : "Sem essencialidade"}
