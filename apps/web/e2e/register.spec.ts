@@ -60,4 +60,24 @@ test("cadastro principal cria sessao e leva o usuario ao dashboard", async ({
   await page.reload();
   await page.waitForURL(/\/dashboard$/);
   await expect(page.getByText("Primeiros passos")).toBeVisible();
+
+  await page.getByRole("button", { name: "Sair" }).click();
+  await page.waitForURL(/\/login$/);
+
+  await page.getByLabel("E-mail").fill(email);
+  await page.locator("form input[type='password']").first().fill(password);
+
+  const loginResponse = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/auth/login"),
+    ),
+    page.getByRole("button", { name: "Entrar" }).click(),
+  ]).then(([response]) => response);
+
+  expect(loginResponse.ok()).toBeTruthy();
+
+  await page.waitForURL(/\/dashboard$/);
+  await expect(page.getByText("Primeiros passos")).toBeVisible();
 });
