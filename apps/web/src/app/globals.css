@@ -47,8 +47,16 @@ body {
   font-family: var(--font-sans);
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.1), transparent 30%),
-    radial-gradient(circle at top right, rgba(185, 134, 72, 0.12), transparent 24%),
+    radial-gradient(
+      circle at top left,
+      rgba(15, 118, 110, 0.1),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(185, 134, 72, 0.12),
+      transparent 24%
+    ),
     linear-gradient(180deg, #f8fafc 0%, var(--bg) 54%, var(--bg-strong) 100%);
 }
 
@@ -193,7 +201,11 @@ textarea {
   font-size: 1.15rem;
   color: white;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02)),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.14),
+      rgba(255, 255, 255, 0.02)
+    ),
     linear-gradient(135deg, var(--accent), #0f9685);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
@@ -223,7 +235,11 @@ textarea {
 .nav-link.active {
   color: white;
   border-color: rgba(255, 255, 255, 0.12);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(20, 132, 117, 0.18));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(20, 132, 117, 0.18)
+  );
 }
 
 .nav-link span {
@@ -338,7 +354,11 @@ textarea {
 .hero-chip {
   font-weight: 700;
   color: var(--accent-strong);
-  background: linear-gradient(135deg, var(--accent-soft), rgba(255, 255, 255, 0.72));
+  background: linear-gradient(
+    135deg,
+    var(--accent-soft),
+    rgba(255, 255, 255, 0.72)
+  );
 }
 
 .eyebrow {
@@ -397,7 +417,11 @@ textarea {
   padding: 1rem 1.1rem 0.9rem;
   display: grid;
   gap: 0.35rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 253, 0.9));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(248, 250, 253, 0.9)
+  );
 }
 
 .stat-card span {
@@ -416,17 +440,29 @@ textarea {
 
 .stat-card.positive {
   border-color: rgba(27, 141, 97, 0.18);
-  background: linear-gradient(180deg, rgba(27, 141, 97, 0.09), rgba(255, 255, 255, 0.94));
+  background: linear-gradient(
+    180deg,
+    rgba(27, 141, 97, 0.09),
+    rgba(255, 255, 255, 0.94)
+  );
 }
 
 .stat-card.warning {
   border-color: rgba(199, 128, 43, 0.18);
-  background: linear-gradient(180deg, rgba(199, 128, 43, 0.09), rgba(255, 255, 255, 0.94));
+  background: linear-gradient(
+    180deg,
+    rgba(199, 128, 43, 0.09),
+    rgba(255, 255, 255, 0.94)
+  );
 }
 
 .stat-card.critical {
   border-color: rgba(207, 84, 73, 0.18);
-  background: linear-gradient(180deg, rgba(207, 84, 73, 0.09), rgba(255, 255, 255, 0.94));
+  background: linear-gradient(
+    180deg,
+    rgba(207, 84, 73, 0.09),
+    rgba(255, 255, 255, 0.94)
+  );
 }
 
 .two-column {
@@ -545,13 +581,25 @@ textarea {
   gap: 0.85rem;
   border-color: rgba(15, 118, 110, 0.14);
   background:
-    radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 48%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(241, 249, 247, 0.94));
+    radial-gradient(
+      circle at top right,
+      rgba(15, 118, 110, 0.08),
+      transparent 48%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.97),
+      rgba(241, 249, 247, 0.94)
+    );
 }
 
 .warning-soft {
   border-color: rgba(199, 128, 43, 0.18);
-  background: linear-gradient(180deg, rgba(199, 128, 43, 0.08), rgba(255, 255, 255, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(199, 128, 43, 0.08),
+    rgba(255, 255, 255, 0.92)
+  );
 }
 
 .warning-list {
@@ -565,8 +613,16 @@ textarea {
 
 .focus-panel {
   background:
-    radial-gradient(circle at top right, rgba(20, 132, 117, 0.12), transparent 40%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 252, 0.92));
+    radial-gradient(
+      circle at top right,
+      rgba(20, 132, 117, 0.12),
+      transparent 40%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.98),
+      rgba(244, 248, 252, 0.92)
+    );
 }
 
 .focus-inline {
@@ -665,19 +721,31 @@ textarea {
 .feedback-banner.success {
   color: #0f5d41;
   border-color: rgba(27, 141, 97, 0.18);
-  background: linear-gradient(135deg, var(--positive-soft), rgba(255, 255, 255, 0.92));
+  background: linear-gradient(
+    135deg,
+    var(--positive-soft),
+    rgba(255, 255, 255, 0.92)
+  );
 }
 
 .feedback-banner.error {
   color: #842b24;
   border-color: rgba(207, 84, 73, 0.18);
-  background: linear-gradient(135deg, var(--critical-soft), rgba(255, 255, 255, 0.92));
+  background: linear-gradient(
+    135deg,
+    var(--critical-soft),
+    rgba(255, 255, 255, 0.92)
+  );
 }
 
 .feedback-banner.info {
   color: #214f9d;
   border-color: rgba(47, 111, 222, 0.18);
-  background: linear-gradient(135deg, var(--info-soft), rgba(255, 255, 255, 0.92));
+  background: linear-gradient(
+    135deg,
+    var(--info-soft),
+    rgba(255, 255, 255, 0.92)
+  );
 }
 
 .progress-group {
@@ -695,7 +763,11 @@ textarea {
 .progress-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(20, 132, 117, 0.88), var(--accent-strong));
+  background: linear-gradient(
+    135deg,
+    rgba(20, 132, 117, 0.88),
+    var(--accent-strong)
+  );
 }
 
 .progress-fill.positive {
@@ -866,7 +938,11 @@ textarea {
   gap: 0.5rem;
   padding: 0.95rem;
   border-radius: var(--radius-md);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(244, 248, 252, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.86),
+    rgba(244, 248, 252, 0.92)
+  );
   border: 1px dashed rgba(21, 37, 58, 0.18);
 }
 
@@ -884,14 +960,23 @@ textarea {
 .empty-state.error {
   border-style: solid;
   border-color: rgba(207, 84, 73, 0.16);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(252, 241, 240, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(252, 241, 240, 0.92)
+  );
 }
 
 .skeleton-card {
   min-height: 120px;
   border-radius: var(--radius-md);
   background:
-    linear-gradient(110deg, rgba(245, 248, 252, 0.8) 8%, rgba(232, 238, 247, 0.95) 18%, rgba(245, 248, 252, 0.8) 33%),
+    linear-gradient(
+      110deg,
+      rgba(245, 248, 252, 0.8) 8%,
+      rgba(232, 238, 247, 0.95) 18%,
+      rgba(245, 248, 252, 0.8) 33%
+    ),
     var(--surface);
   background-size: 220% 100%;
   animation: shimmer 1.3s linear infinite;
@@ -924,8 +1009,16 @@ textarea {
   gap: 1.5rem;
   align-items: stretch;
   background:
-    radial-gradient(circle at top left, rgba(20, 132, 117, 0.16), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(201, 144, 66, 0.18), transparent 32%),
+    radial-gradient(
+      circle at top left,
+      rgba(20, 132, 117, 0.16),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(201, 144, 66, 0.18),
+      transparent 32%
+    ),
     linear-gradient(180deg, #f7f9fc 0%, var(--bg) 100%);
 }
 
@@ -1039,7 +1132,9 @@ textarea {
   color: var(--ink);
   box-shadow: none;
   border: 1px solid transparent;
-  transition: border-color 160ms ease, background 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
 .sentiment-button:hover:not(:disabled) {
@@ -1094,7 +1189,7 @@ textarea {
 
 .alert-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.8rem;
   padding: 0.7rem 0.9rem;
@@ -1105,17 +1200,29 @@ textarea {
 
 .alert-card.critical {
   border-color: rgba(207, 84, 73, 0.2);
-  background: linear-gradient(135deg, var(--critical-soft), rgba(255, 255, 255, 0.95));
+  background: linear-gradient(
+    135deg,
+    var(--critical-soft),
+    rgba(255, 255, 255, 0.95)
+  );
 }
 
 .alert-card.warning {
   border-color: rgba(199, 128, 43, 0.2);
-  background: linear-gradient(135deg, var(--warning-soft), rgba(255, 255, 255, 0.95));
+  background: linear-gradient(
+    135deg,
+    var(--warning-soft),
+    rgba(255, 255, 255, 0.95)
+  );
 }
 
 .alert-card.info {
   border-color: rgba(47, 111, 222, 0.15);
-  background: linear-gradient(135deg, var(--info-soft), rgba(255, 255, 255, 0.95));
+  background: linear-gradient(
+    135deg,
+    var(--info-soft),
+    rgba(255, 255, 255, 0.95)
+  );
 }
 
 .alert-content {
@@ -1193,22 +1300,38 @@ textarea {
 
 .advisor-risk.critico {
   border-color: rgba(207, 84, 73, 0.35);
-  background: linear-gradient(180deg, rgba(207, 84, 73, 0.1), rgba(255, 255, 255, 0.9));
+  background: linear-gradient(
+    180deg,
+    rgba(207, 84, 73, 0.1),
+    rgba(255, 255, 255, 0.9)
+  );
 }
 
 .advisor-risk.alto {
   border-color: rgba(199, 128, 43, 0.35);
-  background: linear-gradient(180deg, rgba(199, 128, 43, 0.1), rgba(255, 255, 255, 0.9));
+  background: linear-gradient(
+    180deg,
+    rgba(199, 128, 43, 0.1),
+    rgba(255, 255, 255, 0.9)
+  );
 }
 
 .advisor-risk.moderado {
   border-color: rgba(47, 111, 222, 0.3);
-  background: linear-gradient(180deg, rgba(47, 111, 222, 0.08), rgba(255, 255, 255, 0.9));
+  background: linear-gradient(
+    180deg,
+    rgba(47, 111, 222, 0.08),
+    rgba(255, 255, 255, 0.9)
+  );
 }
 
 .advisor-risk.baixo {
   border-color: rgba(23, 122, 87, 0.35);
-  background: linear-gradient(180deg, rgba(23, 122, 87, 0.08), rgba(255, 255, 255, 0.9));
+  background: linear-gradient(
+    180deg,
+    rgba(23, 122, 87, 0.08),
+    rgba(255, 255, 255, 0.9)
+  );
 }
 
 .advisor-action-row {
@@ -1231,7 +1354,11 @@ textarea {
 .form-panel {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 249, 252, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(246, 249, 252, 0.92)
+  );
 }
 
 .dashboard-balance {
@@ -1289,11 +1416,19 @@ textarea {
 }
 
 .metric-tile.positive {
-  background: linear-gradient(180deg, rgba(23, 122, 87, 0.1), rgba(255, 255, 255, 0.94));
+  background: linear-gradient(
+    180deg,
+    rgba(23, 122, 87, 0.1),
+    rgba(255, 255, 255, 0.94)
+  );
 }
 
 .metric-tile.warning {
-  background: linear-gradient(180deg, rgba(185, 121, 47, 0.1), rgba(255, 255, 255, 0.94));
+  background: linear-gradient(
+    180deg,
+    rgba(185, 121, 47, 0.1),
+    rgba(255, 255, 255, 0.94)
+  );
 }
 
 .dashboard-grid {
@@ -1303,7 +1438,11 @@ textarea {
 }
 
 .subtle-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 253, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(247, 250, 253, 0.92)
+  );
 }
 
 .insight-grid {
@@ -1314,7 +1453,11 @@ textarea {
 }
 
 .insight-row {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 252, 0.9));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(244, 248, 252, 0.9)
+  );
 }
 
 .guide-list {
@@ -1494,17 +1637,29 @@ textarea {
 
 .toast-item.success {
   border-color: rgba(27, 141, 97, 0.18);
-  background: linear-gradient(135deg, var(--positive-soft), rgba(255, 255, 255, 0.94));
+  background: linear-gradient(
+    135deg,
+    var(--positive-soft),
+    rgba(255, 255, 255, 0.94)
+  );
 }
 
 .toast-item.error {
   border-color: rgba(207, 84, 73, 0.18);
-  background: linear-gradient(135deg, var(--critical-soft), rgba(255, 255, 255, 0.94));
+  background: linear-gradient(
+    135deg,
+    var(--critical-soft),
+    rgba(255, 255, 255, 0.94)
+  );
 }
 
 .toast-item.info {
   border-color: rgba(47, 111, 222, 0.18);
-  background: linear-gradient(135deg, var(--info-soft), rgba(255, 255, 255, 0.94));
+  background: linear-gradient(
+    135deg,
+    var(--info-soft),
+    rgba(255, 255, 255, 0.94)
+  );
 }
 
 @keyframes shimmer {
@@ -1628,6 +1783,50 @@ textarea {
 
   .bank-field {
     grid-column: span 1;
+  }
+
+  .alert-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+    padding: 0.85rem;
+  }
+
+  .alert-content {
+    gap: 0.3rem;
+  }
+
+  .alert-content strong {
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+
+  .alert-content p {
+    font-size: 0.92rem;
+    line-height: 1.35;
+  }
+
+  .alert-recommendation {
+    gap: 0.28rem;
+  }
+
+  .alert-recommendation p {
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+
+  .alert-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.45rem;
+  }
+
+  .alert-actions .inline-link,
+  .alert-actions .ghost-button {
+    flex: 1 1 calc(50% - 0.45rem);
+    text-align: center;
+    justify-content: center;
+    min-height: 2.25rem;
   }
 
   .data-table th,
