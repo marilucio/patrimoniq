@@ -903,6 +903,47 @@ export class DashboardService {
         data,
       });
     }
+    const activeRefs = drafts.map((item) => item.id);
+    const staleActions = await store.findMany({
+      where: {
+        userId,
+        status: {
+          in: ["SUGGESTED", "VIEWED", "POSTPONED"],
+        },
+        ...(activeRefs.length > 0
+          ? {
+              sourceRef: {
+                notIn: activeRefs,
+              },
+            }
+          : {}),
+        updatedAt: {
+          lt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+        },
+      },
+      take: 30,
+      orderBy: { updatedAt: "asc" },
+    });
+    for (const stale of staleActions) {
+      await store.update({
+        where: { id: stale.id },
+        data: {
+          status: "EXPIRED",
+          resolvedAt: now,
+        },
+      });
+      await eventStore.create({
+        data: {
+          userId,
+          advisoryActionId: stale.id,
+          fromStatus: stale.status,
+          toStatus: "EXPIRED",
+          metadata: {
+            reason: "source_missing_or_stale",
+          } as Prisma.InputJsonValue,
+        },
+      });
+    }
   }
 
   private async loadActionPlan(
@@ -1263,6 +1304,8 @@ export class DashboardService {
 
   private async buildConsultiveAnalytics(userId: string, now: Date) {
     const since = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000);
+    const weeklySince = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const previousWeeklyStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     const events = await this.advisoryActionEventStore().findMany({
       where: {
         userId,
@@ -1278,6 +1321,8 @@ export class DashboardService {
     const postponed = events.filter((event) => event.toStatus === "POSTPONED");
     const dismissed = events.filter((event) => event.toStatus === "DISMISSED");
     const viewed = events.filter((event) => event.toStatus === "VIEWED");
+    const weeklyCompleted = completed.filter((event) => event.occurredAt >= weeklySince);
+    const weeklyViewed = viewed.filter((event) => event.occurredAt >= weeklySince);
     const avgMinutes = completed.length
       ? Math.round(
           completed.reduce((sum, event) => {
@@ -1315,16 +1360,138 @@ export class DashboardService {
       acted: value.acted,
       ignored: value.ignored,
     }));
+    const [
+      pendingActions,
+      recentRiskAlerts,
+      previousRiskAlerts,
+      weeklyGoalContributions,
+      completedActionsForImpact,
+      overdueTransactions,
+    ] = await Promise.all([
+      this.advisoryActionStore().findMany({
+        where: {
+          userId,
+          status: {
+            in: ["SUGGESTED", "VIEWED", "POSTPONED"],
+          },
+        },
+      }),
+      this.prisma.alert.count({
+        where: {
+          userId,
+          severity: { in: ["CRITICAL", "WARNING"] },
+          dismissedAt: null,
+          triggerDate: { gte: weeklySince },
+        },
+      }),
+      this.prisma.alert.count({
+        where: {
+          userId,
+          severity: { in: ["CRITICAL", "WARNING"] },
+          dismissedAt: null,
+          triggerDate: { gte: previousWeeklyStart, lt: weeklySince },
+        },
+      }),
+      this.prisma.goalContribution.count({
+        where: {
+          userId,
+          contributionDate: { gte: weeklySince },
+        },
+      }),
+      this.advisoryActionStore().findMany({
+        where: {
+          userId,
+          status: "COMPLETED",
+          resolvedAt: { gte: since },
+        },
+        orderBy: { resolvedAt: "desc" },
+        take: 60,
+      }),
+      this.prisma.transaction.count({
+        where: {
+          userId,
+          dueDate: { lt: now },
+          status: { not: "CLEARED" },
+          type: { in: ["EXPENSE", "CREDIT_CARD_PAYMENT", "LIABILITY_PAYMENT"] },
+        },
+      }),
+    ]);
+    const averageImpactScore =
+      completedActionsForImpact.length > 0
+        ? Math.round(
+            completedActionsForImpact.reduce(
+              (sum, item) => sum + (item.impactScore ?? 0),
+              0,
+            ) / completedActionsForImpact.length,
+          )
+        : null;
+    const riskDirection =
+      recentRiskAlerts < previousRiskAlerts
+        ? "queda"
+        : recentRiskAlerts > previousRiskAlerts
+          ? "alta"
+          : "estavel";
+    const recurringAlertsDelta =
+      previousRiskAlerts > 0
+        ? Number(
+            (
+              ((recentRiskAlerts - previousRiskAlerts) / previousRiskAlerts) *
+              100
+            ).toFixed(1),
+          )
+        : 0;
+    const highlights: string[] = [];
+    if (weeklyCompleted.length > 0) {
+      highlights.push(
+        `${weeklyCompleted.length} acao(oes) concluida(s) nesta semana.`,
+      );
+    }
+    if (riskDirection === "queda") {
+      highlights.push("O volume de alertas de risco caiu na ultima semana.");
+    }
+    if (weeklyGoalContributions > 0) {
+      highlights.push(
+        `${weeklyGoalContributions} aporte(s) em metas nos ultimos 7 dias.`,
+      );
+    }
+    if (averageImpactScore !== null && averageImpactScore >= 65) {
+      highlights.push("As acoes executadas estao gerando impacto positivo.");
+    }
+    const attentionPoints: string[] = [];
+    if (pendingActions.length > 0) {
+      attentionPoints.push(`${pendingActions.length} acao(oes) ainda pendente(s).`);
+    }
+    if (postponed.length > completed.length) {
+      attentionPoints.push(
+        "Ha mais adiamentos do que conclusoes no periodo recente.",
+      );
+    }
+    if (riskDirection === "alta") {
+      attentionPoints.push("Os alertas de risco aumentaram na ultima semana.");
+    }
+    if (overdueTransactions > 0) {
+      attentionPoints.push(
+        `${overdueTransactions} conta(s) vencida(s) ainda sem regularizacao.`,
+      );
+    }
     return {
       completedCount: completed.length,
       postponedCount: postponed.length,
       dismissedCount: dismissed.length,
       viewedCount: viewed.length,
+      pendingCount: pendingActions.length,
+      weeklyCompletedCount: weeklyCompleted.length,
+      weeklyViewedCount: weeklyViewed.length,
       avgActionTimeMinutes: avgMinutes,
+      averageImpactScore,
+      riskDirection,
+      recurringAlertsDelta,
       completionRate:
         viewed.length > 0
           ? Math.min(1, Number((completed.length / viewed.length).toFixed(4)))
           : 0,
+      highlights,
+      attentionPoints,
       byType,
     };
   }

@@ -5,6 +5,7 @@ import { formatCurrency } from "@patrimoniq/domain";
 import { useState, useTransition } from "react";
 import { EmptyModuleState, ErrorState, LoadingState } from "../../components/page-state";
 import {
+  CurrencyField,
   FeedbackBanner,
   FormActions,
   InputField,
@@ -30,7 +31,11 @@ import {
   transactionStatusOptions,
   transactionTypeOptions
 } from "../../lib/options";
-import { parsePositiveAmount, validateIsoDate } from "../../lib/validation";
+import {
+  parsePositiveAmount,
+  toCurrencyInputValue,
+  validateIsoDate
+} from "../../lib/validation";
 
 const pageSize = 12;
 
@@ -154,7 +159,7 @@ export function TransactionsClientPage() {
     setEditingId(item.id);
     setForm({
       description: item.description,
-      amount: String(item.amount),
+      amount: toCurrencyInputValue(item.amount),
       postedAt: item.date,
       type: item.typeCode,
       status: item.statusCode,
@@ -282,15 +287,10 @@ export function TransactionsClientPage() {
                 }
                 required
               />
-              <InputField
+              <CurrencyField
                 label="Valor"
-                type="number"
-                min="0.01"
-                step="0.01"
                 value={form.amount}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, amount: event.target.value }))
-                }
+                onValueChange={(value) => setForm((current) => ({ ...current, amount: value }))}
                 required
               />
               <FormActions submitLabel="Criar transacao" pending={isPending} />
@@ -449,14 +449,11 @@ export function TransactionsClientPage() {
                     }
                     required
                   />
-                  <InputField
+                  <CurrencyField
                     label="Valor"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
                     value={form.amount}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, amount: event.target.value }))
+                    onValueChange={(value) =>
+                      setForm((current) => ({ ...current, amount: value }))
                     }
                     required
                   />

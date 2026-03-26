@@ -3,14 +3,14 @@
 import { formatCurrency } from "@patrimoniq/domain";
 import { useState, useTransition } from "react";
 import { EmptyModuleState, ErrorState, LoadingState } from "../../components/page-state";
-import { FeedbackBanner, FormActions, InputField, SelectField, TextAreaField } from "../../components/form-controls";
+import { CurrencyField, FeedbackBanner, FormActions, InputField, SelectField, TextAreaField } from "../../components/form-controls";
 import { useToast } from "../../components/toast-provider";
 import { PageIntro, ProgressBar, SectionCard, StatCard } from "../../components/ui";
 import { useApiResource } from "../../hooks/use-api-resource";
 import { apiRequest, readApiError, type BudgetsResponse, type CategoriesResponse } from "../../lib/api";
 import { notifyDataChanged } from "../../lib/live-data";
 import { budgetCadenceOptions, humanizeEnum } from "../../lib/options";
-import { parsePositiveAmount, validateDateRange } from "../../lib/validation";
+import { parsePositiveAmount, toCurrencyInputValue, validateDateRange } from "../../lib/validation";
 
 function monthStart() {
   const now = new Date();
@@ -56,7 +56,7 @@ export function BudgetsClientPage() {
     setEditingId(item.id);
     setForm({
       name: item.name,
-      amountLimit: String(item.planned),
+      amountLimit: toCurrencyInputValue(item.planned),
       periodStart: item.periodStart,
       periodEnd: item.periodEnd,
       cadence: item.cadenceCode,
@@ -165,7 +165,7 @@ export function BudgetsClientPage() {
           <SectionCard title="Novo orcamento" subtitle="Crie seu primeiro limite">
             <form className="editor-form" onSubmit={handleSubmit}>
               <InputField label="Nome" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
-              <InputField label="Limite" type="number" min="0" step="0.01" value={form.amountLimit} onChange={(event) => setForm((current) => ({ ...current, amountLimit: event.target.value }))} required />
+              <CurrencyField label="Limite" value={form.amountLimit} onValueChange={(value) => setForm((current) => ({ ...current, amountLimit: value }))} required />
               <FormActions submitLabel="Criar orcamento" pending={isPending} />
               {feedback ? <FeedbackBanner tone={feedback.tone} message={feedback.message} /> : null}
             </form>
@@ -200,7 +200,7 @@ export function BudgetsClientPage() {
           <form className="editor-form" onSubmit={handleSubmit}>
             <div className="form-grid">
               <InputField label="Nome" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
-              <InputField label="Limite" type="number" min="0" step="0.01" value={form.amountLimit} onChange={(event) => setForm((current) => ({ ...current, amountLimit: event.target.value }))} required />
+              <CurrencyField label="Limite" value={form.amountLimit} onValueChange={(value) => setForm((current) => ({ ...current, amountLimit: value }))} required />
               <InputField label="Inicio" type="date" value={form.periodStart} onChange={(event) => setForm((current) => ({ ...current, periodStart: event.target.value }))} required />
               <InputField label="Fim" type="date" value={form.periodEnd} onChange={(event) => setForm((current) => ({ ...current, periodEnd: event.target.value }))} required />
               <SelectField

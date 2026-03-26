@@ -1,6 +1,7 @@
 "use client";
 
 import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { maskCurrencyValue } from "../lib/validation";
 
 export function InputField(
   props: {
@@ -45,6 +46,32 @@ export function SelectField(
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+export function CurrencyField(
+  props: {
+    label: string;
+    value: string;
+    onValueChange: (value: string) => void;
+    hint?: string;
+  } & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type">
+) {
+  const { label, hint, value, onValueChange, ...inputProps } = props;
+  return (
+    <label className="input-field">
+      <div className="input-label-row">
+        <span>{label}</span>
+        {hint ? <small>{hint}</small> : null}
+      </div>
+      <input
+        {...inputProps}
+        type="text"
+        inputMode="numeric"
+        value={value}
+        onChange={(event) => onValueChange(maskCurrencyValue(event.target.value))}
+      />
     </label>
   );
 }

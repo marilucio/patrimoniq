@@ -126,6 +126,23 @@ export const liabilityTypeOptions = [
   "OTHER"
 ] as const;
 
+export const bankInstitutionCatalog = [
+  { code: "001", name: "Banco do Brasil" },
+  { code: "033", name: "Santander" },
+  { code: "077", name: "Banco Inter" },
+  { code: "104", name: "Caixa Economica Federal" },
+  { code: "212", name: "Banco Original" },
+  { code: "237", name: "Bradesco" },
+  { code: "260", name: "Nubank" },
+  { code: "290", name: "PagBank" },
+  { code: "323", name: "Mercado Pago" },
+  { code: "336", name: "C6 Bank" },
+  { code: "341", name: "Itaú" },
+  { code: "422", name: "Safra" },
+  { code: "655", name: "Votorantim" },
+  { code: "745", name: "Citibank" }
+] as const;
+
 export function humanizeEnum(value: string) {
   if (value === "INVESTMENT") {
     return "Investimento";

@@ -4,6 +4,7 @@ import { formatCurrency } from "@patrimoniq/domain";
 import { useEffect, useState, useTransition } from "react";
 import { ErrorState, LoadingState } from "../../components/page-state";
 import {
+  CurrencyField,
   FeedbackBanner,
   FormActions,
   InputField,
@@ -29,12 +30,17 @@ import {
 import { notifyDataChanged } from "../../lib/live-data";
 import {
   accountTypeOptions,
+  bankInstitutionCatalog,
   categoryDirectionOptions,
   costNatureOptions,
   essentialityOptions,
   humanizeEnum,
   slugify,
 } from "../../lib/options";
+import {
+  parseRequiredAmount,
+  toCurrencyInputValue,
+} from "../../lib/validation";
 
 const emptyAccountForm = {
   name: "",
@@ -73,22 +79,6 @@ const dateFormatOptions = [
   { value: "DD/MM/YYYY", label: "DD/MM/AAAA" },
   { value: "MM/DD/YYYY", label: "MM/DD/AAAA" },
   { value: "YYYY-MM-DD", label: "AAAA-MM-DD" },
-];
-
-const bankCatalog = [
-  { code: "001", name: "Banco do Brasil" },
-  { code: "033", name: "Santander" },
-  { code: "104", name: "Caixa Economica Federal" },
-  { code: "237", name: "Bradesco" },
-  { code: "341", name: "Itaú" },
-  { code: "260", name: "Nubank" },
-  { code: "077", name: "Banco Inter" },
-  { code: "336", name: "C6 Bank" },
-  { code: "290", name: "PagBank" },
-  { code: "655", name: "Votorantim" },
-  { code: "422", name: "Safra" },
-  { code: "745", name: "Citibank" },
-  { code: "212", name: "Banco Original" },
 ];
 
 function readStoredPreference(key: string, fallback: string): string {
@@ -258,7 +248,7 @@ export function SettingsClientPage() {
     settings.data?.notificationPreferences,
   ]);
 
-  const availableBanks = [...bankCatalog, ...customBanks];
+  const availableBanks = [...bankInstitutionCatalog, ...customBanks];
   const normalizedBankSearch = bankSearch.trim().toLowerCase();
   const filteredBanks =
     normalizedBankSearch.length === 0
@@ -480,7 +470,7 @@ export function SettingsClientPage() {
       name: item.name,
       type: item.typeCode,
       institutionName: item.institutionName ?? "",
-      openingBalance: String(item.openingBalance),
+      openingBalance: toCurrencyInputValue(item.openingBalance),
     });
     setBankSearch(item.institutionName ?? "");
     setFeedback(null);
@@ -514,6 +504,15 @@ export function SettingsClientPage() {
   function submitAccount(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFeedback(null);
+    const openingBalanceResult = parseRequiredAmount(
+      accountForm.openingBalance || "0",
+      "Saldo inicial",
+    );
+    if (openingBalanceResult.error) {
+      setFeedback({ tone: "error", message: openingBalanceResult.error });
+      showToast({ tone: "error", message: openingBalanceResult.error });
+      return;
+    }
 
     startTransition(() => {
       void apiRequest(
@@ -527,7 +526,7 @@ export function SettingsClientPage() {
               ? { institutionName: accountForm.institutionName }
               : {}),
             ...(accountForm.openingBalance
-              ? { openingBalance: Number(accountForm.openingBalance) }
+              ? { openingBalance: openingBalanceResult.value }
               : {}),
           },
         },
@@ -972,7 +971,8 @@ export function SettingsClientPage() {
           <form className="editor-form" onSubmit={submitAccount}>
             <div className="form-grid">
               <InputField
-                label="Nome"
+                label="Apelido da conta"
+                hint="Nome para identificar a conta no dia a dia."
                 value={accountForm.name}
                 onChange={(event) =>
                   setAccountForm((current) => ({
@@ -1011,7 +1011,7 @@ export function SettingsClientPage() {
                       institutionName: value,
                     }));
                   }}
-                  placeholder="Ex.: 341 - Itaú"
+                  placeholder="Ex.: 323 - Mercado Pago"
                 />
                 <div className="bank-suggestions">
                   {filteredBanks.map((bank) => (
@@ -1052,16 +1052,14 @@ export function SettingsClientPage() {
                   ) : null}
                 </div>
               </label>
-              <InputField
+              <CurrencyField
                 label="Saldo inicial"
-                type="number"
-                min="0"
-                step="0.01"
+                hint="Use o valor atual da conta no cadastro."
                 value={accountForm.openingBalance}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   setAccountForm((current) => ({
                     ...current,
-                    openingBalance: event.target.value,
+                    openingBalance: value,
                   }))
                 }
               />
@@ -1082,8 +1080,9 @@ export function SettingsClientPage() {
                   <span>{account.type}</span>
                 </div>
                 <p>
-                  Saldo inicial {formatCurrency(account.openingBalance)} · saldo
-                  atual {formatCurrency(account.currentBalance)}
+                  Banco {account.institutionName || "Nao informado"} · Saldo
+                  inicial {formatCurrency(account.openingBalance)} · saldo atual{" "}
+                  {formatCurrency(account.currentBalance)}
                 </p>
                 <div className="list-actions">
                   <button

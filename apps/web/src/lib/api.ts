@@ -551,8 +551,16 @@ export interface DashboardResponse {
       postponedCount: number;
       dismissedCount: number;
       viewedCount: number;
+      pendingCount: number;
+      weeklyCompletedCount: number;
+      weeklyViewedCount: number;
       avgActionTimeMinutes: number | null;
+      averageImpactScore: number | null;
+      riskDirection: "queda" | "estavel" | "alta";
+      recurringAlertsDelta: number;
       completionRate: number;
+      highlights: string[];
+      attentionPoints: string[];
       byType: Array<{
         type: string;
         acted: number;

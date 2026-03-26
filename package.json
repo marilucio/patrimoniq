@@ -8,6 +8,8 @@
     "dev:api": "pnpm --filter @patrimoniq/api start:dev",
     "start:web": "pnpm --filter @patrimoniq/web start",
     "start:api": "pnpm --filter @patrimoniq/api start",
+    "deploy:prepare:api": "pnpm --filter @patrimoniq/api prisma:generate && pnpm --filter @patrimoniq/api build",
+    "deploy:prepare:prod": "pnpm run deploy:prepare:api && pnpm run db:push && pnpm --filter @patrimoniq/web build",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "test:e2e:web": "pnpm --filter @patrimoniq/web test:e2e",

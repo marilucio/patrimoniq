@@ -3,14 +3,14 @@
 import { calculateGoalProgress, formatCurrency } from "@patrimoniq/domain";
 import { useState, useTransition } from "react";
 import { EmptyModuleState, ErrorState, LoadingState } from "../../components/page-state";
-import { FeedbackBanner, FormActions, InputField, SelectField, TextAreaField } from "../../components/form-controls";
+import { CurrencyField, FeedbackBanner, FormActions, InputField, SelectField, TextAreaField } from "../../components/form-controls";
 import { useToast } from "../../components/toast-provider";
 import { EmptyState, PageIntro, ProgressBar, SectionCard } from "../../components/ui";
 import { useApiResource } from "../../hooks/use-api-resource";
 import { apiRequest, readApiError, type GoalsResponse } from "../../lib/api";
 import { notifyDataChanged } from "../../lib/live-data";
 import { goalKindOptions, goalPriorityOptions, humanizeEnum } from "../../lib/options";
-import { parsePositiveAmount, validateIsoDate } from "../../lib/validation";
+import { parsePositiveAmount, parseRequiredAmount, toCurrencyInputValue, validateIsoDate } from "../../lib/validation";
 
 const emptyGoalForm = {
   name: "",
@@ -42,9 +42,9 @@ export function GoalsClientPage() {
       name: goal.name,
       kind: goal.kindCode,
       priority: goal.priorityCode,
-      targetAmount: String(goal.targetAmount),
-      currentAmount: String(goal.currentAmount),
-      monthlyContributionTarget: String(goal.monthlyTarget),
+      targetAmount: toCurrencyInputValue(goal.targetAmount),
+      currentAmount: toCurrencyInputValue(goal.currentAmount),
+      monthlyContributionTarget: toCurrencyInputValue(goal.monthlyTarget),
       targetDate: goal.targetDate,
       notes: goal.notes ?? ""
     });
@@ -71,6 +71,23 @@ export function GoalsClientPage() {
       }
     }
 
+    const currentAmountResult = parseRequiredAmount(form.currentAmount || "0", "Acumulado atual");
+    if (currentAmountResult.error) {
+      setFeedback({ tone: "error", message: currentAmountResult.error });
+      showToast({ tone: "error", message: currentAmountResult.error });
+      return;
+    }
+
+    const monthlyContributionResult = parseRequiredAmount(
+      form.monthlyContributionTarget || "0",
+      "Aporte mensal alvo"
+    );
+    if (monthlyContributionResult.error) {
+      setFeedback({ tone: "error", message: monthlyContributionResult.error });
+      showToast({ tone: "error", message: monthlyContributionResult.error });
+      return;
+    }
+
     startTransition(() => {
       void apiRequest(editingId ? `/goals/${editingId}` : "/goals", {
         method: editingId ? "PATCH" : "POST",
@@ -79,8 +96,8 @@ export function GoalsClientPage() {
           kind: form.kind,
           priority: form.priority,
           targetAmount: targetAmountResult.value,
-          ...(form.currentAmount ? { currentAmount: Number(form.currentAmount) } : {}),
-          ...(form.monthlyContributionTarget ? { monthlyContributionTarget: Number(form.monthlyContributionTarget) } : {}),
+          ...(form.currentAmount ? { currentAmount: currentAmountResult.value } : {}),
+          ...(form.monthlyContributionTarget ? { monthlyContributionTarget: monthlyContributionResult.value } : {}),
           ...(form.targetDate ? { targetDate: form.targetDate } : {}),
           ...(form.notes ? { notes: form.notes } : {})
         }
@@ -149,7 +166,7 @@ export function GoalsClientPage() {
           <SectionCard title="Nova meta" subtitle="Defina seu primeiro objetivo">
             <form className="editor-form" onSubmit={handleSubmit}>
               <InputField label="Nome" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
-              <InputField label="Valor alvo" type="number" min="0" step="0.01" value={form.targetAmount} onChange={(event) => setForm((current) => ({ ...current, targetAmount: event.target.value }))} required />
+              <CurrencyField label="Valor alvo" value={form.targetAmount} onValueChange={(value) => setForm((current) => ({ ...current, targetAmount: value }))} required />
               <FormActions submitLabel="Criar meta" pending={isPending} />
               {feedback ? <FeedbackBanner tone={feedback.tone} message={feedback.message} /> : null}
             </form>
@@ -179,9 +196,9 @@ export function GoalsClientPage() {
               <InputField label="Nome" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
               <SelectField label="Tipo" value={form.kind} onChange={(event) => setForm((current) => ({ ...current, kind: event.target.value }))} options={goalKindOptions.map((option) => ({ value: option, label: humanizeEnum(option) }))} />
               <SelectField label="Prioridade" value={form.priority} onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value }))} options={goalPriorityOptions.map((option) => ({ value: option, label: humanizeEnum(option) }))} />
-              <InputField label="Valor alvo" type="number" min="0" step="0.01" value={form.targetAmount} onChange={(event) => setForm((current) => ({ ...current, targetAmount: event.target.value }))} required />
-              <InputField label="Acumulado atual" type="number" min="0" step="0.01" value={form.currentAmount} onChange={(event) => setForm((current) => ({ ...current, currentAmount: event.target.value }))} />
-              <InputField label="Aporte mensal alvo" type="number" min="0" step="0.01" value={form.monthlyContributionTarget} onChange={(event) => setForm((current) => ({ ...current, monthlyContributionTarget: event.target.value }))} />
+              <CurrencyField label="Valor alvo" value={form.targetAmount} onValueChange={(value) => setForm((current) => ({ ...current, targetAmount: value }))} required />
+              <CurrencyField label="Acumulado atual" value={form.currentAmount} onValueChange={(value) => setForm((current) => ({ ...current, currentAmount: value }))} />
+              <CurrencyField label="Aporte mensal alvo" value={form.monthlyContributionTarget} onValueChange={(value) => setForm((current) => ({ ...current, monthlyContributionTarget: value }))} />
               <InputField label="Data alvo" type="date" value={form.targetDate} onChange={(event) => setForm((current) => ({ ...current, targetDate: event.target.value }))} />
             </div>
 

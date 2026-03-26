@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 
 function buildDashboardPayload() {
   return {
@@ -199,8 +199,19 @@ function buildDashboardPayload() {
         postponedCount: 2,
         dismissedCount: 1,
         viewedCount: 7,
+        pendingCount: 2,
+        weeklyCompletedCount: 3,
+        weeklyViewedCount: 5,
         avgActionTimeMinutes: 42,
+        averageImpactScore: 74,
+        riskDirection: "queda",
+        recurringAlertsDelta: -25,
         completionRate: 0.57,
+        highlights: [
+          "3 acao(oes) concluida(s) nesta semana.",
+          "O volume de alertas de risco caiu na ultima semana.",
+        ],
+        attentionPoints: ["2 acao(oes) ainda pendente(s)."],
         byType: [
           { type: "CASHFLOW", acted: 3, ignored: 0 },
           { type: "GOAL", acted: 1, ignored: 1 },
@@ -210,7 +221,7 @@ function buildDashboardPayload() {
   };
 }
 
-async function mockApi(page: Parameters<typeof test>[0]["page"]) {
+async function mockApi(page: Page) {
   const dashboardPayload = buildDashboardPayload();
   const alertsPayload = {
     items: [
@@ -237,7 +248,7 @@ async function mockApi(page: Parameters<typeof test>[0]["page"]) {
     unreadCount: 1,
   };
 
-  await page.route("**/api/proxy/**", async (route) => {
+  await page.route("**/api/proxy/**", async (route: Route) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname.replace(/^\/api\/proxy/, "");
@@ -500,6 +511,9 @@ test("desktop valida login, dashboard consultivo, plano de acao e configuracoes 
 }) => {
   test.setTimeout(90000);
   test.skip(!baseURL, "Defina PLAYWRIGHT_BASE_URL.");
+  if (!baseURL) {
+    return;
+  }
 
   const consoleErrors: string[] = [];
   const requestFailures: string[] = [];
@@ -546,9 +560,14 @@ test("desktop valida login, dashboard consultivo, plano de acao e configuracoes 
   await expect(page.getByText("Quitar conta vencida").first()).toBeVisible();
 
   page.once("dialog", (dialog) => dialog.accept("Concluida sem impedimentos."));
-  await page.getByRole("button", { name: "Concluir" }).first().click();
+  await page.getByRole("button", { name: "Concluir agora" }).first().click();
   await page.getByRole("button", { name: "Adiar" }).first().click();
-  await page.getByRole("button", { name: "Dispensar" }).first().click();
+  await page
+    .getByRole("button", { name: "Dispensar sugestao" })
+    .first()
+    .click();
+  await expect(page.getByText("Resultado recente")).toBeVisible();
+  await expect(page.getByText("Concluidas na semana")).toBeVisible();
 
   await page.goto("/settings");
   await expect(
@@ -556,11 +575,21 @@ test("desktop valida login, dashboard consultivo, plano de acao e configuracoes 
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Seguranca" })).toBeVisible();
 
+  await expect(page.getByLabel("Apelido da conta")).toBeVisible();
   const bankInput = page.locator(".bank-field input");
+  await bankInput.fill("323");
+  await expect(
+    page.getByRole("button", { name: /323 · Mercado Pago/i }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /323 · Mercado Pago/i }).click();
+  await expect(bankInput).toHaveValue(/323 - Mercado Pago/i);
   await bankInput.fill("341");
   await expect(page.getByRole("button", { name: /341 · Itaú/i })).toBeVisible();
   await page.getByRole("button", { name: /341 · Itaú/i }).click();
   await expect(bankInput).toHaveValue(/341 - Itaú/i);
+  const openingBalanceInput = page.getByLabel("Saldo inicial");
+  await openingBalanceInput.fill("123456");
+  await expect(openingBalanceInput).toHaveValue("1.234,56");
 
   await page.getByRole("button", { name: "Salvar notificacoes" }).click();
 
@@ -582,6 +611,9 @@ test("mobile valida menu sanduiche, dashboard e configuracoes com layout funcion
   baseURL,
 }) => {
   test.skip(!baseURL, "Defina PLAYWRIGHT_BASE_URL.");
+  if (!baseURL) {
+    return;
+  }
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
   });
@@ -600,7 +632,14 @@ test("mobile valida menu sanduiche, dashboard e configuracoes com layout funcion
     },
   ]);
 
-  await page.goto("/dashboard");
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().includes("/api/proxy/dashboard/overview"),
+    ),
+    page.goto("/dashboard"),
+  ]);
   await expect(page.getByText("Plano de acao do mes")).toBeVisible();
 
   await page.getByRole("button", { name: "Abrir menu de navegacao" }).click();

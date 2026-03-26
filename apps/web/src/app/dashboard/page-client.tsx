@@ -295,7 +295,7 @@ function AdvisorActionPlanCard(props: {
                       );
                     }}
                   >
-                    Concluir
+                    Concluir agora
                   </button>
                   <button
                     type="button"
@@ -313,7 +313,7 @@ function AdvisorActionPlanCard(props: {
                       props.onUpdateStatus(action.id, "dismissed", action.route)
                     }
                   >
-                    Dispensar
+                    Dispensar sugestao
                   </button>
                 </>
               ) : null}
@@ -370,6 +370,82 @@ function AdvisorRoutineCard(props: {
             conclusao nas acoes vistas
           </p>
         </article>
+      </div>
+    </SectionCard>
+  );
+}
+
+function ConsultiveResultCard(props: {
+  analytics: DashboardResponse["advisor"]["consultiveAnalytics"];
+  riskScore: number;
+}) {
+  const trendLabel =
+    props.analytics.riskDirection === "queda"
+      ? "Risco em queda"
+      : props.analytics.riskDirection === "alta"
+        ? "Risco em alta"
+        : "Risco estavel";
+  return (
+    <SectionCard
+      title="Resultado recente"
+      subtitle="Leitura rapida do que melhorou e do que pede atencao"
+      className="subtle-card"
+    >
+      <div className="stats-grid compact">
+        <StatCard
+          label="Concluidas na semana"
+          value={String(props.analytics.weeklyCompletedCount)}
+          helper="Acoes finalizadas nos ultimos 7 dias"
+          tone="positive"
+        />
+        <StatCard
+          label="Pendentes"
+          value={String(props.analytics.pendingCount)}
+          helper="Acoes ainda abertas"
+          tone={props.analytics.pendingCount > 0 ? "warning" : "positive"}
+        />
+        <StatCard
+          label="Taxa de conclusao"
+          value={`${Math.round(props.analytics.completionRate * 100)}%`}
+          helper="Concluidas sobre acoes visualizadas"
+          tone="positive"
+        />
+        <StatCard
+          label={trendLabel}
+          value={`${props.riskScore}/100`}
+          helper={`Variacao de alertas: ${props.analytics.recurringAlertsDelta}%`}
+          tone={
+            props.analytics.riskDirection === "queda"
+              ? "positive"
+              : props.analytics.riskDirection === "alta"
+                ? "critical"
+                : "warning"
+          }
+        />
+      </div>
+      <div className="two-column">
+        <div className="stack-list">
+          {(props.analytics.highlights.length > 0
+            ? props.analytics.highlights
+            : ["Ainda sem ganhos recentes. Conclua a prioridade da semana."]).map(
+            (item) => (
+              <article key={item} className="stack-row">
+                <strong>O que melhorou</strong>
+                <p>{item}</p>
+              </article>
+            ),
+          )}
+        </div>
+        <div className="stack-list">
+          {(props.analytics.attentionPoints.length > 0
+            ? props.analytics.attentionPoints
+            : ["Sem pontos criticos no momento."]).map((item) => (
+            <article key={item} className="stack-row">
+              <strong>Pontos de atencao</strong>
+              <p>{item}</p>
+            </article>
+          ))}
+        </div>
       </div>
     </SectionCard>
   );
@@ -527,6 +603,11 @@ export function DashboardClientPage() {
           consultiveAnalytics={data.advisor.consultiveAnalytics}
         />
       </div>
+
+      <ConsultiveResultCard
+        analytics={data.advisor.consultiveAnalytics}
+        riskScore={data.advisor.riskSummary.score}
+      />
 
       <section className="dashboard-hero">
         <div className="dashboard-balance">

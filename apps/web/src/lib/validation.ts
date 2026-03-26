@@ -1,25 +1,76 @@
+const brlFormatter = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export function maskCurrencyValue(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) {
+    return "";
+  }
+  const cents = Number(digits);
+  if (!Number.isFinite(cents)) {
+    return "";
+  }
+  return brlFormatter.format(cents / 100);
+}
+
+export function toCurrencyInputValue(
+  value: number | string | null | undefined,
+) {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+  const numeric =
+    typeof value === "number" ? value : parseAmountValue(String(value));
+  if (numeric === null) {
+    return "";
+  }
+  return brlFormatter.format(numeric);
+}
+
+function parseAmountValue(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const normalized = trimmed
+    .replace(/\s/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".")
+    .replace(/[^0-9.-]/g, "");
+  if (!normalized || normalized === "-" || normalized === ".") {
+    return null;
+  }
+  const amount = Number(normalized);
+  if (Number.isNaN(amount)) {
+    return null;
+  }
+  return amount;
+}
+
 export function parseRequiredAmount(value: string, label: string) {
   const trimmed = value.trim();
 
   if (!trimmed) {
     return {
       value: null,
-      error: `${label} obrigatorio.`
+      error: `${label} obrigatorio.`,
     };
   }
 
-  const amount = Number(trimmed);
+  const amount = parseAmountValue(trimmed);
 
-  if (Number.isNaN(amount) || amount < 0) {
+  if (amount === null || amount < 0) {
     return {
       value: null,
-      error: `${label} invalido.`
+      error: `${label} invalido.`,
     };
   }
 
   return {
     value: amount,
-    error: null
+    error: null,
   };
 }
 
@@ -33,7 +84,7 @@ export function parsePositiveAmount(value: string, label: string) {
   if ((parsed.value ?? 0) <= 0) {
     return {
       value: null,
-      error: `${label} precisa ser maior que zero.`
+      error: `${label} precisa ser maior que zero.`,
     };
   }
 

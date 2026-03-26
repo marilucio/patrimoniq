@@ -4,6 +4,7 @@ import { formatCurrency } from "@patrimoniq/domain";
 import { useState, useTransition } from "react";
 import { EmptyModuleState, ErrorState, LoadingState } from "../../components/page-state";
 import {
+  CurrencyField,
   FeedbackBanner,
   FormActions,
   InputField,
@@ -23,7 +24,12 @@ import {
 } from "../../lib/api";
 import { notifyDataChanged } from "../../lib/live-data";
 import { assetTypeOptions, humanizeEnum, liabilityTypeOptions } from "../../lib/options";
-import { parsePositiveAmount, parseRequiredAmount, validateIsoDate } from "../../lib/validation";
+import {
+  parsePositiveAmount,
+  parseRequiredAmount,
+  toCurrencyInputValue,
+  validateIsoDate
+} from "../../lib/validation";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -113,8 +119,8 @@ export function NetWorthClientPage() {
     setAssetForm({
       name: item.name,
       type: item.typeCode,
-      currentValue: String(item.currentValue),
-      acquisitionValue: item.acquisitionValue ? String(item.acquisitionValue) : "",
+      currentValue: toCurrencyInputValue(item.currentValue),
+      acquisitionValue: item.acquisitionValue ? toCurrencyInputValue(item.acquisitionValue) : "",
       linkedAccountId: item.linkedAccountId ?? ""
     });
     setFeedback(null);
@@ -125,8 +131,8 @@ export function NetWorthClientPage() {
     setLiabilityForm({
       name: item.name,
       type: item.typeCode,
-      currentBalance: String(item.currentBalance),
-      monthlyPayment: item.monthlyPayment ? String(item.monthlyPayment) : ""
+      currentBalance: toCurrencyInputValue(item.currentBalance),
+      monthlyPayment: item.monthlyPayment ? toCurrencyInputValue(item.monthlyPayment) : ""
     });
     setFeedback(null);
   }
@@ -135,10 +141,10 @@ export function NetWorthClientPage() {
     setEditingSnapshotId(item.id);
     setSnapshotForm({
       snapshotDate: item.snapshotDate,
-      totalAssets: String(item.totalAssets),
-      totalLiabilities: String(item.totalLiabilities),
-      liquidReserve: String(item.liquidReserve),
-      investedAssets: String(item.investedAssets)
+      totalAssets: toCurrencyInputValue(item.totalAssets),
+      totalLiabilities: toCurrencyInputValue(item.totalLiabilities),
+      liquidReserve: toCurrencyInputValue(item.liquidReserve),
+      investedAssets: toCurrencyInputValue(item.investedAssets)
     });
     setFeedback(null);
   }
@@ -152,6 +158,16 @@ export function NetWorthClientPage() {
       return;
     }
 
+    const acquisitionValueResult = parseRequiredAmount(
+      assetForm.acquisitionValue || "0",
+      "Valor de aquisicao"
+    );
+    if (acquisitionValueResult.error) {
+      setFeedback({ tone: "error", message: acquisitionValueResult.error });
+      showToast({ tone: "error", message: acquisitionValueResult.error });
+      return;
+    }
+
     startTransition(() => {
       void apiRequest(editingAssetId ? `/assets/${editingAssetId}` : "/assets", {
         method: editingAssetId ? "PATCH" : "POST",
@@ -159,7 +175,7 @@ export function NetWorthClientPage() {
           name: assetForm.name,
           type: assetForm.type,
           currentValue: currentValueResult.value,
-          ...(assetForm.acquisitionValue ? { acquisitionValue: Number(assetForm.acquisitionValue) } : {}),
+          ...(assetForm.acquisitionValue ? { acquisitionValue: acquisitionValueResult.value } : {}),
           ...(assetForm.linkedAccountId ? { linkedAccountId: assetForm.linkedAccountId } : {})
         }
       })
@@ -185,6 +201,16 @@ export function NetWorthClientPage() {
       return;
     }
 
+    const monthlyPaymentResult = parseRequiredAmount(
+      liabilityForm.monthlyPayment || "0",
+      "Parcela mensal"
+    );
+    if (monthlyPaymentResult.error) {
+      setFeedback({ tone: "error", message: monthlyPaymentResult.error });
+      showToast({ tone: "error", message: monthlyPaymentResult.error });
+      return;
+    }
+
     startTransition(() => {
       void apiRequest(editingLiabilityId ? `/liabilities/${editingLiabilityId}` : "/liabilities", {
         method: editingLiabilityId ? "PATCH" : "POST",
@@ -192,7 +218,7 @@ export function NetWorthClientPage() {
           name: liabilityForm.name,
           type: liabilityForm.type,
           currentBalance: currentBalanceResult.value,
-          ...(liabilityForm.monthlyPayment ? { monthlyPayment: Number(liabilityForm.monthlyPayment) } : {})
+          ...(liabilityForm.monthlyPayment ? { monthlyPayment: monthlyPaymentResult.value } : {})
         }
       })
         .then(async () => {
@@ -231,6 +257,26 @@ export function NetWorthClientPage() {
       return;
     }
 
+    const liquidReserveResult = parseRequiredAmount(
+      snapshotForm.liquidReserve || "0",
+      "Reserva liquida"
+    );
+    if (liquidReserveResult.error) {
+      setFeedback({ tone: "error", message: liquidReserveResult.error });
+      showToast({ tone: "error", message: liquidReserveResult.error });
+      return;
+    }
+
+    const investedAssetsResult = parseRequiredAmount(
+      snapshotForm.investedAssets || "0",
+      "Investidos"
+    );
+    if (investedAssetsResult.error) {
+      setFeedback({ tone: "error", message: investedAssetsResult.error });
+      showToast({ tone: "error", message: investedAssetsResult.error });
+      return;
+    }
+
     startTransition(() => {
       void apiRequest(editingSnapshotId ? `/net-worth/snapshots/${editingSnapshotId}` : "/net-worth/snapshots", {
         method: editingSnapshotId ? "PATCH" : "POST",
@@ -238,8 +284,8 @@ export function NetWorthClientPage() {
           snapshotDate: snapshotForm.snapshotDate,
           totalAssets: totalAssetsResult.value,
           totalLiabilities: totalLiabilitiesResult.value,
-          liquidReserve: Number(snapshotForm.liquidReserve || 0),
-          investedAssets: Number(snapshotForm.investedAssets || 0)
+          liquidReserve: liquidReserveResult.value,
+          investedAssets: investedAssetsResult.value
         }
       })
         .then(async () => {
@@ -328,7 +374,7 @@ export function NetWorthClientPage() {
           <SectionCard title="Novo ativo" subtitle="Registre seu primeiro bem">
             <form className="editor-form" onSubmit={submitAsset}>
               <InputField label="Nome" value={assetForm.name} onChange={(event) => setAssetForm((current) => ({ ...current, name: event.target.value }))} required />
-              <InputField label="Valor atual" type="number" min="0" step="0.01" value={assetForm.currentValue} onChange={(event) => setAssetForm((current) => ({ ...current, currentValue: event.target.value }))} required />
+              <CurrencyField label="Valor atual" value={assetForm.currentValue} onValueChange={(value) => setAssetForm((current) => ({ ...current, currentValue: value }))} required />
               <FormActions submitLabel="Criar ativo" pending={isPending} />
               {feedback ? <FeedbackBanner tone={feedback.tone} message={feedback.message} /> : null}
             </form>
@@ -376,8 +422,8 @@ export function NetWorthClientPage() {
             <div className="form-grid">
               <InputField label="Nome" value={assetForm.name} onChange={(event) => setAssetForm((current) => ({ ...current, name: event.target.value }))} required />
               <SelectField label="Tipo" value={assetForm.type} onChange={(event) => setAssetForm((current) => ({ ...current, type: event.target.value }))} options={assetTypeOptions.map((option) => ({ value: option, label: humanizeEnum(option) }))} />
-              <InputField label="Valor atual" type="number" min="0" step="0.01" value={assetForm.currentValue} onChange={(event) => setAssetForm((current) => ({ ...current, currentValue: event.target.value }))} required />
-              <InputField label="Valor de aquisicao" type="number" min="0" step="0.01" value={assetForm.acquisitionValue} onChange={(event) => setAssetForm((current) => ({ ...current, acquisitionValue: event.target.value }))} />
+              <CurrencyField label="Valor atual" value={assetForm.currentValue} onValueChange={(value) => setAssetForm((current) => ({ ...current, currentValue: value }))} required />
+              <CurrencyField label="Valor de aquisicao" value={assetForm.acquisitionValue} onValueChange={(value) => setAssetForm((current) => ({ ...current, acquisitionValue: value }))} />
               <SelectField label="Conta vinculada" value={assetForm.linkedAccountId} onChange={(event) => setAssetForm((current) => ({ ...current, linkedAccountId: event.target.value }))} options={accounts.data.items.map((account) => ({ value: account.id, label: account.name }))} />
             </div>
             <FormActions submitLabel={editingAssetId ? "Salvar ativo" : "Criar ativo"} cancelLabel={editingAssetId ? "Cancelar" : undefined} onCancel={editingAssetId ? resetAssetForm : undefined} pending={isPending} />
@@ -404,8 +450,8 @@ export function NetWorthClientPage() {
             <div className="form-grid">
               <InputField label="Nome" value={liabilityForm.name} onChange={(event) => setLiabilityForm((current) => ({ ...current, name: event.target.value }))} required />
               <SelectField label="Tipo" value={liabilityForm.type} onChange={(event) => setLiabilityForm((current) => ({ ...current, type: event.target.value }))} options={liabilityTypeOptions.map((option) => ({ value: option, label: humanizeEnum(option) }))} />
-              <InputField label="Saldo atual" type="number" min="0" step="0.01" value={liabilityForm.currentBalance} onChange={(event) => setLiabilityForm((current) => ({ ...current, currentBalance: event.target.value }))} required />
-              <InputField label="Parcela mensal" type="number" min="0" step="0.01" value={liabilityForm.monthlyPayment} onChange={(event) => setLiabilityForm((current) => ({ ...current, monthlyPayment: event.target.value }))} />
+              <CurrencyField label="Saldo atual" value={liabilityForm.currentBalance} onValueChange={(value) => setLiabilityForm((current) => ({ ...current, currentBalance: value }))} required />
+              <CurrencyField label="Parcela mensal" value={liabilityForm.monthlyPayment} onValueChange={(value) => setLiabilityForm((current) => ({ ...current, monthlyPayment: value }))} />
             </div>
             <FormActions submitLabel={editingLiabilityId ? "Salvar divida" : "Criar divida"} cancelLabel={editingLiabilityId ? "Cancelar" : undefined} onCancel={editingLiabilityId ? resetLiabilityForm : undefined} pending={isPending} />
           </form>
@@ -432,10 +478,10 @@ export function NetWorthClientPage() {
           <form className="editor-form" onSubmit={submitSnapshot}>
             <div className="form-grid">
               <InputField label="Data" type="date" value={snapshotForm.snapshotDate} onChange={(event) => setSnapshotForm((current) => ({ ...current, snapshotDate: event.target.value }))} required />
-              <InputField label="Total de ativos" type="number" min="0" step="0.01" value={snapshotForm.totalAssets} onChange={(event) => setSnapshotForm((current) => ({ ...current, totalAssets: event.target.value }))} required />
-              <InputField label="Total de dividas" type="number" min="0" step="0.01" value={snapshotForm.totalLiabilities} onChange={(event) => setSnapshotForm((current) => ({ ...current, totalLiabilities: event.target.value }))} required />
-              <InputField label="Reserva liquida" type="number" min="0" step="0.01" value={snapshotForm.liquidReserve} onChange={(event) => setSnapshotForm((current) => ({ ...current, liquidReserve: event.target.value }))} />
-              <InputField label="Investidos" type="number" min="0" step="0.01" value={snapshotForm.investedAssets} onChange={(event) => setSnapshotForm((current) => ({ ...current, investedAssets: event.target.value }))} />
+              <CurrencyField label="Total de ativos" value={snapshotForm.totalAssets} onValueChange={(value) => setSnapshotForm((current) => ({ ...current, totalAssets: value }))} required />
+              <CurrencyField label="Total de dividas" value={snapshotForm.totalLiabilities} onValueChange={(value) => setSnapshotForm((current) => ({ ...current, totalLiabilities: value }))} required />
+              <CurrencyField label="Reserva liquida" value={snapshotForm.liquidReserve} onValueChange={(value) => setSnapshotForm((current) => ({ ...current, liquidReserve: value }))} />
+              <CurrencyField label="Investidos" value={snapshotForm.investedAssets} onValueChange={(value) => setSnapshotForm((current) => ({ ...current, investedAssets: value }))} />
             </div>
             <FormActions submitLabel={editingSnapshotId ? "Salvar snapshot" : "Criar snapshot"} cancelLabel={editingSnapshotId ? "Cancelar" : undefined} onCancel={editingSnapshotId ? resetSnapshotForm : undefined} pending={isPending} />
           </form>
