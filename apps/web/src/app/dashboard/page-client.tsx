@@ -219,6 +219,105 @@ function actionStatusLabel(status?: string) {
   return "Sugerida";
 }
 
+function normalizeConsultiveAnalytics(
+  analytics: DashboardResponse["advisor"]["consultiveAnalytics"] | undefined,
+) {
+  return {
+    completedCount: analytics?.completedCount ?? 0,
+    postponedCount: analytics?.postponedCount ?? 0,
+    dismissedCount: analytics?.dismissedCount ?? 0,
+    viewedCount: analytics?.viewedCount ?? 0,
+    pendingCount: analytics?.pendingCount ?? 0,
+    weeklyCompletedCount: analytics?.weeklyCompletedCount ?? 0,
+    weeklyViewedCount: analytics?.weeklyViewedCount ?? 0,
+    avgActionTimeMinutes: analytics?.avgActionTimeMinutes ?? null,
+    averageImpactScore: analytics?.averageImpactScore ?? null,
+    riskDirection: analytics?.riskDirection ?? "estavel",
+    recurringAlertsDelta: analytics?.recurringAlertsDelta ?? 0,
+    completionRate: analytics?.completionRate ?? 0,
+    highlights: analytics?.highlights ?? [],
+    attentionPoints: analytics?.attentionPoints ?? [],
+    byType: analytics?.byType ?? [],
+  };
+}
+
+function normalizeOnboarding(
+  onboarding: DashboardResponse["onboarding"] | undefined,
+): DashboardResponse["onboarding"] {
+  const totalSteps = onboarding?.totalSteps ?? 1;
+  const completedSteps = Math.min(onboarding?.completedSteps ?? 0, totalSteps);
+  return {
+    completedSteps,
+    totalSteps,
+    isComplete: onboarding?.isComplete ?? false,
+    steps: onboarding?.steps ?? [],
+    nextStep: onboarding?.nextStep ?? null,
+    nudge:
+      onboarding?.nudge ?? "Conclua os primeiros passos para ativar o painel.",
+    dashboardGuide: onboarding?.dashboardGuide ?? [],
+  };
+}
+
+function normalizeAdvisor(
+  advisor: DashboardResponse["advisor"] | undefined,
+): DashboardResponse["advisor"] {
+  const normalizedAnalytics = normalizeConsultiveAnalytics(
+    advisor?.consultiveAnalytics,
+  );
+  return {
+    priorityOfWeek: {
+      id: advisor?.priorityOfWeek?.id ?? "no-priority",
+      title: advisor?.priorityOfWeek?.title ?? "Prioridade em definicao",
+      route: advisor?.priorityOfWeek?.route ?? "/dashboard",
+      cta: advisor?.priorityOfWeek?.cta ?? "Ver detalhe",
+      dueDate: advisor?.priorityOfWeek?.dueDate ?? null,
+      score: advisor?.priorityOfWeek?.score ?? 0,
+    },
+    mainAttention:
+      advisor?.mainAttention ?? "Mantenha o acompanhamento consultivo ativo.",
+    shortTermActions: (advisor?.shortTermActions ?? []).map((action) => ({
+      ...action,
+      context: action.context ?? {},
+    })),
+    riskSummary: {
+      level: advisor?.riskSummary?.level ?? "moderado",
+      score: advisor?.riskSummary?.score ?? 50,
+      label: advisor?.riskSummary?.label ?? "Risco moderado",
+      description:
+        advisor?.riskSummary?.description ??
+        "Continue executando as acoes para reduzir risco.",
+    },
+    monthlyActionPlan: {
+      title: advisor?.monthlyActionPlan?.title ?? "Plano de acao do mes",
+      subtitle:
+        advisor?.monthlyActionPlan?.subtitle ??
+        "Acoes sugeridas para manter o controle financeiro.",
+      actions: (advisor?.monthlyActionPlan?.actions ?? []).map((action) => ({
+        ...action,
+        context: action.context ?? {},
+      })),
+    },
+    routine: {
+      weeklyPriority:
+        advisor?.routine?.weeklyPriority ?? "Revise sua prioridade semanal.",
+      monthReview:
+        advisor?.routine?.monthReview ?? "Revisao mensal ainda sem dados.",
+      goalConsistency:
+        advisor?.routine?.goalConsistency ??
+        "Consistencia de metas em analise.",
+      followUpReminder:
+        advisor?.routine?.followUpReminder ??
+        "Reserve alguns minutos para revisar suas acoes.",
+    },
+    behaviorProfile: {
+      strongTypes: advisor?.behaviorProfile?.strongTypes ?? [],
+      weakTypes: advisor?.behaviorProfile?.weakTypes ?? [],
+      byType: advisor?.behaviorProfile?.byType ?? [],
+    },
+    consultiveAnalytics: normalizedAnalytics,
+  };
+}
+
 function AdvisorActionPlanCard(props: {
   advisor: DashboardResponse["advisor"];
   onTrackInteraction: (
@@ -258,7 +357,7 @@ function AdvisorActionPlanCard(props: {
             <div className="stack-head">
               <strong>{action.title}</strong>
               <span>
-                {actionStatusLabel(action.context.status)} · Prioridade{" "}
+                {actionStatusLabel(action.context?.status)} · Prioridade{" "}
                 {action.score}
               </span>
             </div>
@@ -276,8 +375,8 @@ function AdvisorActionPlanCard(props: {
               >
                 {action.cta}
               </Link>
-              {action.context.status !== "completed" &&
-              action.context.status !== "dismissed" ? (
+              {action.context?.status !== "completed" &&
+              action.context?.status !== "dismissed" ? (
                 <>
                   <button
                     type="button"
@@ -329,6 +428,7 @@ function AdvisorRoutineCard(props: {
   routine: DashboardResponse["advisor"]["routine"];
   consultiveAnalytics: DashboardResponse["advisor"]["consultiveAnalytics"];
 }) {
+  const analytics = normalizeConsultiveAnalytics(props.consultiveAnalytics);
   return (
     <SectionCard
       title="Rotina financeira"
@@ -366,8 +466,8 @@ function AdvisorRoutineCard(props: {
           <span className="guide-dot" />
           <p>
             <strong>Aderencia consultiva:</strong>{" "}
-            {Math.round(props.consultiveAnalytics.completionRate * 100)}% de
-            conclusao nas acoes vistas
+            {Math.round(analytics.completionRate * 100)}% de conclusao nas acoes
+            vistas
           </p>
         </article>
       </div>
@@ -379,10 +479,11 @@ function ConsultiveResultCard(props: {
   analytics: DashboardResponse["advisor"]["consultiveAnalytics"];
   riskScore: number;
 }) {
+  const analytics = normalizeConsultiveAnalytics(props.analytics);
   const trendLabel =
-    props.analytics.riskDirection === "queda"
+    analytics.riskDirection === "queda"
       ? "Risco em queda"
-      : props.analytics.riskDirection === "alta"
+      : analytics.riskDirection === "alta"
         ? "Risco em alta"
         : "Risco estavel";
   return (
@@ -394,30 +495,30 @@ function ConsultiveResultCard(props: {
       <div className="stats-grid compact">
         <StatCard
           label="Concluidas na semana"
-          value={String(props.analytics.weeklyCompletedCount)}
+          value={String(analytics.weeklyCompletedCount)}
           helper="Acoes finalizadas nos ultimos 7 dias"
           tone="positive"
         />
         <StatCard
           label="Pendentes"
-          value={String(props.analytics.pendingCount)}
+          value={String(analytics.pendingCount)}
           helper="Acoes ainda abertas"
-          tone={props.analytics.pendingCount > 0 ? "warning" : "positive"}
+          tone={analytics.pendingCount > 0 ? "warning" : "positive"}
         />
         <StatCard
           label="Taxa de conclusao"
-          value={`${Math.round(props.analytics.completionRate * 100)}%`}
+          value={`${Math.round(analytics.completionRate * 100)}%`}
           helper="Concluidas sobre acoes visualizadas"
           tone="positive"
         />
         <StatCard
           label={trendLabel}
           value={`${props.riskScore}/100`}
-          helper={`Variacao de alertas: ${props.analytics.recurringAlertsDelta}%`}
+          helper={`Variacao de alertas: ${analytics.recurringAlertsDelta}%`}
           tone={
-            props.analytics.riskDirection === "queda"
+            analytics.riskDirection === "queda"
               ? "positive"
-              : props.analytics.riskDirection === "alta"
+              : analytics.riskDirection === "alta"
                 ? "critical"
                 : "warning"
           }
@@ -425,21 +526,21 @@ function ConsultiveResultCard(props: {
       </div>
       <div className="two-column">
         <div className="stack-list">
-          {(props.analytics.highlights.length > 0
-            ? props.analytics.highlights
-            : ["Ainda sem ganhos recentes. Conclua a prioridade da semana."]).map(
-            (item) => (
-              <article key={item} className="stack-row">
-                <strong>O que melhorou</strong>
-                <p>{item}</p>
-              </article>
-            ),
-          )}
+          {(analytics.highlights.length > 0
+            ? analytics.highlights
+            : ["Ainda sem ganhos recentes. Conclua a prioridade da semana."]
+          ).map((item) => (
+            <article key={item} className="stack-row">
+              <strong>O que melhorou</strong>
+              <p>{item}</p>
+            </article>
+          ))}
         </div>
         <div className="stack-list">
-          {(props.analytics.attentionPoints.length > 0
-            ? props.analytics.attentionPoints
-            : ["Sem pontos criticos no momento."]).map((item) => (
+          {(analytics.attentionPoints.length > 0
+            ? analytics.attentionPoints
+            : ["Sem pontos criticos no momento."]
+          ).map((item) => (
             <article key={item} className="stack-row">
               <strong>Pontos de atencao</strong>
               <p>{item}</p>
@@ -551,13 +652,19 @@ export function DashboardClientPage() {
     );
   }
 
+  const onboarding = normalizeOnboarding(data.onboarding);
+  const advisor = normalizeAdvisor(data.advisor);
+  const goals = data.goals ?? [];
+  const upcomingBills = data.upcomingBills ?? [];
+  const insights = data.insights ?? [];
   const activeAlerts = (alerts.data?.items ?? []).filter((a) => !a.isRead);
+  const consultiveAnalytics = advisor.consultiveAnalytics;
 
   const emptyState =
     data.summary.income === 0 &&
     data.summary.expenses === 0 &&
-    data.goals.length === 0 &&
-    data.upcomingBills.length === 0;
+    goals.length === 0 &&
+    upcomingBills.length === 0;
 
   if (emptyState) {
     return (
@@ -568,8 +675,8 @@ export function DashboardClientPage() {
           description="Complete os passos abaixo para ativar seu painel financeiro."
         />
         <div className="two-column">
-          <OnboardingCard onboarding={data.onboarding} />
-          <DashboardGuideCard guide={data.onboarding.dashboardGuide} />
+          <OnboardingCard onboarding={onboarding} />
+          <DashboardGuideCard guide={onboarding.dashboardGuide} />
         </div>
       </div>
     );
@@ -594,19 +701,19 @@ export function DashboardClientPage() {
 
       <div className="two-column">
         <AdvisorActionPlanCard
-          advisor={data.advisor}
+          advisor={advisor}
           onTrackInteraction={trackActionPlanInteraction}
           onUpdateStatus={updateActionStatus}
         />
         <AdvisorRoutineCard
-          routine={data.advisor.routine}
-          consultiveAnalytics={data.advisor.consultiveAnalytics}
+          routine={advisor.routine}
+          consultiveAnalytics={consultiveAnalytics}
         />
       </div>
 
       <ConsultiveResultCard
-        analytics={data.advisor.consultiveAnalytics}
-        riskScore={data.advisor.riskSummary.score}
+        analytics={consultiveAnalytics}
+        riskScore={advisor.riskSummary.score}
       />
 
       <section className="dashboard-hero">
@@ -647,17 +754,17 @@ export function DashboardClientPage() {
             <strong>{formatCurrency(data.summary.netWorth)}</strong>
           </div>
           <p>
-            {data.upcomingBills.length > 0
-              ? `${data.upcomingBills.length} compromisso(s) pendente(s) neste mes.`
+            {upcomingBills.length > 0
+              ? `${upcomingBills.length} compromisso(s) pendente(s) neste mes.`
               : "Nenhum compromisso pendente neste mes."}
           </p>
         </div>
       </section>
 
-      {!data.onboarding.isComplete ? (
+      {!onboarding.isComplete ? (
         <div className="two-column">
-          <OnboardingCard onboarding={data.onboarding} />
-          <DashboardGuideCard guide={data.onboarding.dashboardGuide} />
+          <OnboardingCard onboarding={onboarding} />
+          <DashboardGuideCard guide={onboarding.dashboardGuide} />
         </div>
       ) : null}
 
@@ -667,9 +774,9 @@ export function DashboardClientPage() {
           subtitle="Compromissos pendentes no periodo"
           className="subtle-card"
         >
-          {data.upcomingBills.length > 0 ? (
+          {upcomingBills.length > 0 ? (
             <div className="stack-list">
-              {data.upcomingBills.map((bill) => (
+              {upcomingBills.map((bill) => (
                 <article key={bill.id} className="stack-row">
                   <div className="stack-head">
                     <strong>{bill.description}</strong>
@@ -693,9 +800,9 @@ export function DashboardClientPage() {
           subtitle="Progresso das suas metas ativas"
           className="subtle-card"
         >
-          {data.goals.length > 0 ? (
+          {goals.length > 0 ? (
             <div className="stack-list">
-              {data.goals.map((goal) => (
+              {goals.map((goal) => (
                 <div key={goal.id} className="stack-row">
                   <div className="stack-head">
                     <strong>{goal.name}</strong>
@@ -735,7 +842,7 @@ export function DashboardClientPage() {
             helper="Sua riqueza real agora"
           />
           <div className="stack-list">
-            {data.insights.slice(0, 4).map((insight) => (
+            {insights.slice(0, 4).map((insight) => (
               <article key={insight.id} className="stack-row insight-row">
                 <strong>{insight.title}</strong>
                 <p>{insight.description}</p>

@@ -707,6 +707,9 @@ export function SettingsClientPage() {
     );
   }
 
+  const accountItems = accounts.data.items ?? [];
+  const categoryItems = categories.data.items ?? [];
+  const subcategoryItems = subcategories.data.items ?? [];
   const sessionItems = sessions.data?.sessions ?? [];
   const otherSessionCount = sessionItems.filter((s) => !s.isCurrent).length;
 
@@ -1073,7 +1076,7 @@ export function SettingsClientPage() {
           </form>
 
           <div className="stack-list">
-            {accounts.data.items.map((account) => (
+            {accountItems.map((account) => (
               <div key={account.id} className="stack-row">
                 <div className="stack-head">
                   <strong>{account.name}</strong>
@@ -1178,7 +1181,7 @@ export function SettingsClientPage() {
           </form>
 
           <div className="stack-list">
-            {categories.data.items.map((category) => (
+            {categoryItems.map((category) => (
               <div key={category.id} className="stack-row">
                 <div className="stack-head">
                   <strong>{category.name}</strong>
@@ -1233,7 +1236,7 @@ export function SettingsClientPage() {
                     categoryId: event.target.value,
                   }))
                 }
-                options={categories.data.items.map((category) => ({
+                options={categoryItems.map((category) => ({
                   value: category.id,
                   label: category.name,
                 }))}
@@ -1304,7 +1307,7 @@ export function SettingsClientPage() {
           </form>
 
           <div className="stack-list">
-            {subcategories.data.items.map((subcategory) => (
+            {subcategoryItems.map((subcategory) => (
               <div key={subcategory.id} className="stack-row">
                 <div className="stack-head">
                   <strong>{subcategory.name}</strong>

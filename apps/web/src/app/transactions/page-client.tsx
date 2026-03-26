@@ -3,24 +3,33 @@
 import Link from "next/link";
 import { formatCurrency } from "@patrimoniq/domain";
 import { useState, useTransition } from "react";
-import { EmptyModuleState, ErrorState, LoadingState } from "../../components/page-state";
+import {
+  EmptyModuleState,
+  ErrorState,
+  LoadingState,
+} from "../../components/page-state";
 import {
   CurrencyField,
   FeedbackBanner,
   FormActions,
   InputField,
   SelectField,
-  TextAreaField
+  TextAreaField,
 } from "../../components/form-controls";
 import { useToast } from "../../components/toast-provider";
-import { DataTable, PageIntro, SectionCard, StatCard } from "../../components/ui";
+import {
+  DataTable,
+  PageIntro,
+  SectionCard,
+  StatCard,
+} from "../../components/ui";
 import { useApiResource } from "../../hooks/use-api-resource";
 import {
   apiRequest,
   readApiError,
   type AccountsResponse,
   type CategoriesResponse,
-  type TransactionsResponse
+  type TransactionsResponse,
 } from "../../lib/api";
 import { notifyDataChanged } from "../../lib/live-data";
 import {
@@ -29,12 +38,12 @@ import {
   humanizeEnum,
   paymentMethodOptions,
   transactionStatusOptions,
-  transactionTypeOptions
+  transactionTypeOptions,
 } from "../../lib/options";
 import {
   parsePositiveAmount,
   toCurrencyInputValue,
-  validateIsoDate
+  validateIsoDate,
 } from "../../lib/validation";
 
 const pageSize = 12;
@@ -78,6 +87,30 @@ function buildTransactionsPath(filters: {
   return `/transactions?${params.toString()}`;
 }
 
+function normalizeTransactionsData(data: TransactionsResponse | undefined) {
+  const items = data?.items ?? [];
+  const pagination = data?.pagination ?? {
+    page: 1,
+    pageSize,
+    totalItems: items.length,
+    totalPages: 1,
+  };
+  return {
+    items,
+    summary: {
+      income: data?.summary?.income ?? 0,
+      expenses: data?.summary?.expenses ?? 0,
+      planned: data?.summary?.planned ?? 0,
+    },
+    pagination: {
+      page: pagination.page ?? 1,
+      pageSize: pagination.pageSize ?? pageSize,
+      totalItems: pagination.totalItems ?? items.length,
+      totalPages: Math.max(1, pagination.totalPages ?? 1),
+    },
+  };
+}
+
 const emptyTransactionForm = {
   description: "",
   amount: "",
@@ -90,7 +123,7 @@ const emptyTransactionForm = {
   paymentMethod: "PIX",
   costNature: "VARIABLE",
   essentiality: "IMPORTANT",
-  notes: ""
+  notes: "",
 };
 
 const emptyFilters = {
@@ -99,28 +132,34 @@ const emptyFilters = {
   status: "ALL",
   direction: "ALL",
   categoryId: "",
-  subcategoryId: ""
+  subcategoryId: "",
 };
 
 export function TransactionsClientPage() {
   const [form, setForm] = useState(emptyTransactionForm);
   const [filters, setFilters] = useState(emptyFilters);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(
-    null
-  );
+  const [feedback, setFeedback] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
   const { showToast } = useToast();
 
-  const transactions = useApiResource<TransactionsResponse>(buildTransactionsPath(filters));
+  const transactions = useApiResource<TransactionsResponse>(
+    buildTransactionsPath(filters),
+  );
   const accounts = useApiResource<AccountsResponse>("/accounts");
   const categories = useApiResource<CategoriesResponse>("/categories");
 
-  const loading = transactions.loading || accounts.loading || categories.loading;
+  const loading =
+    transactions.loading || accounts.loading || categories.loading;
   const error = transactions.error ?? accounts.error ?? categories.error;
-  const selectedCategory = categories.data?.items.find((item) => item.id === form.categoryId);
+  const selectedCategory = categories.data?.items.find(
+    (item) => item.id === form.categoryId,
+  );
   const selectedFilterCategory = categories.data?.items.find(
-    (item) => item.id === filters.categoryId
+    (item) => item.id === filters.categoryId,
   );
   const hasActiveFilters =
     Boolean(filters.search.trim()) ||
@@ -143,19 +182,22 @@ export function TransactionsClientPage() {
     patch: Partial<typeof emptyFilters>,
     options?: {
       preservePage?: boolean;
-    }
+    },
   ) {
     setFilters((current) => ({
       ...current,
       ...patch,
       page:
-        options?.preservePage || Object.prototype.hasOwnProperty.call(patch, "page")
-          ? patch.page ?? current.page
-          : 1
+        options?.preservePage ||
+        Object.prototype.hasOwnProperty.call(patch, "page")
+          ? (patch.page ?? current.page)
+          : 1,
     }));
   }
 
-  function loadTransactionIntoForm(item: TransactionsResponse["items"][number]) {
+  function loadTransactionIntoForm(
+    item: TransactionsResponse["items"][number],
+  ) {
     setEditingId(item.id);
     setForm({
       description: item.description,
@@ -169,7 +211,7 @@ export function TransactionsClientPage() {
       paymentMethod: item.paymentMethodCode ?? "OTHER",
       costNature: item.natureCode ?? "VARIABLE",
       essentiality: item.essentialityCode ?? "IMPORTANT",
-      notes: item.notes ?? ""
+      notes: item.notes ?? "",
     });
     setFeedback(null);
   }
@@ -193,27 +235,34 @@ export function TransactionsClientPage() {
     }
 
     startTransition(() => {
-      void apiRequest(editingId ? `/transactions/${editingId}` : "/transactions", {
-        method: editingId ? "PATCH" : "POST",
-        body: {
-          description: form.description,
-          amount: amountResult.value,
-          postedAt: form.postedAt,
-          type: form.type,
-          status: form.status,
-          paymentMethod: form.paymentMethod,
-          costNature: form.costNature,
-          essentiality: form.essentiality,
-          ...(form.accountId ? { accountId: form.accountId } : {}),
-          ...(form.categoryId ? { categoryId: form.categoryId } : {}),
-          ...(form.subcategoryId ? { subcategoryId: form.subcategoryId } : {}),
-          ...(form.notes ? { notes: form.notes } : {})
-        }
-      })
+      void apiRequest(
+        editingId ? `/transactions/${editingId}` : "/transactions",
+        {
+          method: editingId ? "PATCH" : "POST",
+          body: {
+            description: form.description,
+            amount: amountResult.value,
+            postedAt: form.postedAt,
+            type: form.type,
+            status: form.status,
+            paymentMethod: form.paymentMethod,
+            costNature: form.costNature,
+            essentiality: form.essentiality,
+            ...(form.accountId ? { accountId: form.accountId } : {}),
+            ...(form.categoryId ? { categoryId: form.categoryId } : {}),
+            ...(form.subcategoryId
+              ? { subcategoryId: form.subcategoryId }
+              : {}),
+            ...(form.notes ? { notes: form.notes } : {}),
+          },
+        },
+      )
         .then(async () => {
           await transactions.reload();
           notifyDataChanged();
-          const message = editingId ? "Transacao atualizada." : "Transacao criada.";
+          const message = editingId
+            ? "Transacao atualizada."
+            : "Transacao criada.";
           setFeedback({ tone: "success", message });
           showToast({ tone: "success", message });
           resetForm();
@@ -262,7 +311,15 @@ export function TransactionsClientPage() {
     );
   }
 
-  if (transactions.data.pagination.totalItems === 0 && !editingId && !hasActiveFilters) {
+  const transactionsData = normalizeTransactionsData(transactions.data);
+  const accountItems = accounts.data.items ?? [];
+  const categoryItems = categories.data.items ?? [];
+
+  if (
+    transactionsData.pagination.totalItems === 0 &&
+    !editingId &&
+    !hasActiveFilters
+  ) {
     return (
       <div className="page-grid">
         <PageIntro
@@ -271,8 +328,11 @@ export function TransactionsClientPage() {
           description="Registre receitas e despesas para visualizar seu mes."
         />
         <div className="two-column">
-          <SectionCard title="Nova transacao" subtitle="Registre sua primeira movimentacao">
-            {accounts.data.items.length === 0 ? (
+          <SectionCard
+            title="Nova transacao"
+            subtitle="Registre sua primeira movimentacao"
+          >
+            {accountItems.length === 0 ? (
               <FeedbackBanner
                 tone="info"
                 message="Cadastre uma conta em Configuracoes antes de registrar movimentacoes."
@@ -283,20 +343,30 @@ export function TransactionsClientPage() {
                 label="Descricao"
                 value={form.description}
                 onChange={(event) =>
-                  setForm((current) => ({ ...current, description: event.target.value }))
+                  setForm((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
                 }
                 required
               />
               <CurrencyField
                 label="Valor"
                 value={form.amount}
-                onValueChange={(value) => setForm((current) => ({ ...current, amount: value }))}
+                onValueChange={(value) =>
+                  setForm((current) => ({ ...current, amount: value }))
+                }
                 required
               />
               <FormActions submitLabel="Criar transacao" pending={isPending} />
-              {feedback ? <FeedbackBanner tone={feedback.tone} message={feedback.message} /> : null}
+              {feedback ? (
+                <FeedbackBanner
+                  tone={feedback.tone}
+                  message={feedback.message}
+                />
+              ) : null}
             </form>
-            {accounts.data.items.length === 0 ? (
+            {accountItems.length === 0 ? (
               <Link href="/settings" className="inline-link">
                 Abrir configuracoes
               </Link>
@@ -318,30 +388,34 @@ export function TransactionsClientPage() {
         eyebrow="Transacoes"
         title="Seu fluxo financeiro"
         description="Lance, filtre e ajuste suas movimentacoes."
-        actions={<div className="hero-chip">{transactions.data.pagination.totalItems} registros</div>}
+        actions={
+          <div className="hero-chip">
+            {transactionsData.pagination.totalItems} registros
+          </div>
+        }
       />
 
       <section className="stats-grid compact">
         <StatCard
           label="Receitas"
-          value={formatCurrency(transactions.data.summary.income)}
+          value={formatCurrency(transactionsData.summary.income)}
           helper="Compensadas no mes"
           tone="positive"
         />
         <StatCard
           label="Despesas"
-          value={formatCurrency(transactions.data.summary.expenses)}
+          value={formatCurrency(transactionsData.summary.expenses)}
           helper="Compensadas no mes"
         />
         <StatCard
           label="A vencer"
-          value={formatCurrency(transactions.data.summary.planned)}
+          value={formatCurrency(transactionsData.summary.planned)}
           helper="Planejadas ou pendentes"
           tone="warning"
         />
         <StatCard
           label="Pagina"
-          value={`${transactions.data.pagination.page}/${transactions.data.pagination.totalPages}`}
+          value={`${transactionsData.pagination.page}/${transactionsData.pagination.totalPages}`}
           helper="Listagem paginada"
         />
       </section>
@@ -362,12 +436,14 @@ export function TransactionsClientPage() {
           <SelectField
             label="Direcao"
             value={filters.direction}
-            onChange={(event) => patchFilters({ direction: event.target.value })}
+            onChange={(event) =>
+              patchFilters({ direction: event.target.value })
+            }
             options={[
               { value: "ALL", label: "Todas" },
               { value: "income", label: "Receitas" },
               { value: "expense", label: "Despesas" },
-              { value: "transfer", label: "Transferencias" }
+              { value: "transfer", label: "Transferencias" },
             ]}
           />
           <SelectField
@@ -378,8 +454,8 @@ export function TransactionsClientPage() {
               { value: "ALL", label: "Todos" },
               ...transactionStatusOptions.map((option) => ({
                 value: option,
-                label: humanizeEnum(option)
-              }))
+                label: humanizeEnum(option),
+              })),
             ]}
           />
           <SelectField
@@ -388,22 +464,26 @@ export function TransactionsClientPage() {
             onChange={(event) =>
               patchFilters({
                 categoryId: event.target.value,
-                subcategoryId: ""
+                subcategoryId: "",
               })
             }
-            options={categories.data.items.map((category) => ({
+            options={categoryItems.map((category) => ({
               value: category.id,
-              label: category.name
+              label: category.name,
             }))}
           />
           <SelectField
             label="Subcategoria"
             value={filters.subcategoryId}
-            onChange={(event) => patchFilters({ subcategoryId: event.target.value })}
-            options={(selectedFilterCategory?.subcategories ?? []).map((subcategory) => ({
-              value: subcategory.id,
-              label: subcategory.name
-            }))}
+            onChange={(event) =>
+              patchFilters({ subcategoryId: event.target.value })
+            }
+            options={(selectedFilterCategory?.subcategories ?? []).map(
+              (subcategory) => ({
+                value: subcategory.id,
+                label: subcategory.name,
+              }),
+            )}
           />
         </div>
         <div className="filter-summary">
@@ -427,7 +507,7 @@ export function TransactionsClientPage() {
             editingId ? <span className="pill">Editando lancamento</span> : null
           }
         >
-          {accounts.data.items.length === 0 ? (
+          {accountItems.length === 0 ? (
             <FeedbackBanner
               tone="info"
               message="Cadastre uma conta em Configuracoes antes de registrar movimentacoes."
@@ -445,7 +525,10 @@ export function TransactionsClientPage() {
                     label="Descricao"
                     value={form.description}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, description: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        description: event.target.value,
+                      }))
                     }
                     required
                   />
@@ -462,7 +545,10 @@ export function TransactionsClientPage() {
                     type="date"
                     value={form.postedAt}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, postedAt: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        postedAt: event.target.value,
+                      }))
                     }
                     required
                   />
@@ -470,11 +556,14 @@ export function TransactionsClientPage() {
                     label="Tipo"
                     value={form.type}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, type: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        type: event.target.value,
+                      }))
                     }
                     options={transactionTypeOptions.map((option) => ({
                       value: option,
-                      label: humanizeEnum(option)
+                      label: humanizeEnum(option),
                     }))}
                   />
                 </div>
@@ -493,56 +582,70 @@ export function TransactionsClientPage() {
                       setForm((current) => ({
                         ...current,
                         categoryId: event.target.value,
-                        subcategoryId: ""
+                        subcategoryId: "",
                       }))
                     }
-                    options={categories.data.items.map((category) => ({
+                    options={categoryItems.map((category) => ({
                       value: category.id,
-                      label: category.name
+                      label: category.name,
                     }))}
                   />
                   <SelectField
                     label="Subcategoria"
                     value={form.subcategoryId}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, subcategoryId: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        subcategoryId: event.target.value,
+                      }))
                     }
-                    options={(selectedCategory?.subcategories ?? []).map((subcategory) => ({
-                      value: subcategory.id,
-                      label: subcategory.name
-                    }))}
+                    options={(selectedCategory?.subcategories ?? []).map(
+                      (subcategory) => ({
+                        value: subcategory.id,
+                        label: subcategory.name,
+                      }),
+                    )}
                   />
                   <SelectField
                     label="Status"
                     value={form.status}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, status: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        status: event.target.value,
+                      }))
                     }
                     options={transactionStatusOptions.map((option) => ({
                       value: option,
-                      label: humanizeEnum(option)
+                      label: humanizeEnum(option),
                     }))}
                   />
                   <SelectField
                     label="Essencialidade"
                     value={form.essentiality}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, essentiality: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        essentiality: event.target.value,
+                      }))
                     }
                     options={essentialityOptions.map((option) => ({
                       value: option,
-                      label: humanizeEnum(option)
+                      label: humanizeEnum(option),
                     }))}
                   />
                   <SelectField
                     label="Natureza"
                     value={form.costNature}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, costNature: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        costNature: event.target.value,
+                      }))
                     }
                     options={costNatureOptions.map((option) => ({
                       value: option,
-                      label: humanizeEnum(option)
+                      label: humanizeEnum(option),
                     }))}
                   />
                 </div>
@@ -558,22 +661,28 @@ export function TransactionsClientPage() {
                     label="Conta"
                     value={form.accountId}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, accountId: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        accountId: event.target.value,
+                      }))
                     }
-                    options={accounts.data.items.map((account) => ({
+                    options={accountItems.map((account) => ({
                       value: account.id,
-                      label: account.name
+                      label: account.name,
                     }))}
                   />
                   <SelectField
                     label="Forma de pagamento"
                     value={form.paymentMethod}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, paymentMethod: event.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        paymentMethod: event.target.value,
+                      }))
                     }
                     options={paymentMethodOptions.map((option) => ({
                       value: option,
-                      label: humanizeEnum(option)
+                      label: humanizeEnum(option),
                     }))}
                   />
                 </div>
@@ -583,13 +692,18 @@ export function TransactionsClientPage() {
                   hint="Opcional. Use para lembrar contexto, prazo ou decisao."
                   value={form.notes}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, notes: event.target.value }))
+                    setForm((current) => ({
+                      ...current,
+                      notes: event.target.value,
+                    }))
                   }
                 />
               </section>
             </div>
 
-            {feedback ? <FeedbackBanner tone={feedback.tone} message={feedback.message} /> : null}
+            {feedback ? (
+              <FeedbackBanner tone={feedback.tone} message={feedback.message} />
+            ) : null}
 
             <FormActions
               submitLabel={editingId ? "Salvar alteracoes" : "Criar transacao"}
@@ -606,15 +720,23 @@ export function TransactionsClientPage() {
           className="ledger-card"
           actions={
             <span className="pill">
-              Pagina {transactions.data.pagination.page} de {transactions.data.pagination.totalPages}
+              Pagina {transactionsData.pagination.page} de{" "}
+              {transactionsData.pagination.totalPages}
             </span>
           }
         >
-          {transactions.data.items.length > 0 ? (
+          {transactionsData.items.length > 0 ? (
             <>
               <DataTable
-                columns={["Data", "Lancamento", "Classificacao", "Situacao", "Valor", "Acoes"]}
-                rows={transactions.data.items.map((item) => [
+                columns={[
+                  "Data",
+                  "Lancamento",
+                  "Classificacao",
+                  "Situacao",
+                  "Valor",
+                  "Acoes",
+                ]}
+                rows={transactionsData.items.map((item) => [
                   item.date,
                   <>
                     <strong>{item.description}</strong>
@@ -627,14 +749,19 @@ export function TransactionsClientPage() {
                     </div>
                   </>,
                   <>
-                    <span className={`status-pill ${item.statusTone}`}>{item.status}</span>
+                    <span className={`status-pill ${item.statusTone}`}>
+                      {item.status}
+                    </span>
                     <div className="table-sub">{item.paymentMethod}</div>
                   </>,
                   <div className="value-stack">
                     <strong>{formatCurrency(item.amount)}</strong>
                     <span className="table-sub">{item.essentiality}</span>
                   </div>,
-                  <div key={`${item.id}-actions`} className="list-actions compact-actions">
+                  <div
+                    key={`${item.id}-actions`}
+                    className="list-actions compact-actions"
+                  >
                     <button
                       type="button"
                       className="ghost-button"
@@ -649,17 +776,25 @@ export function TransactionsClientPage() {
                     >
                       Cancelar
                     </button>
-                  </div>
+                  </div>,
                 ])}
               />
               <div className="pagination-bar">
-                <p>Mostrando {transactions.data.items.length} lancamentos nesta pagina.</p>
+                <p>
+                  Mostrando {transactionsData.items.length} lancamentos nesta
+                  pagina.
+                </p>
                 <div className="list-actions compact-actions">
                   <button
                     type="button"
                     className="ghost-button"
-                    disabled={transactions.data.pagination.page <= 1}
-                    onClick={() => patchFilters({ page: filters.page - 1 }, { preservePage: true })}
+                    disabled={transactionsData.pagination.page <= 1}
+                    onClick={() =>
+                      patchFilters(
+                        { page: filters.page - 1 },
+                        { preservePage: true },
+                      )
+                    }
                   >
                     Anterior
                   </button>
@@ -667,9 +802,15 @@ export function TransactionsClientPage() {
                     type="button"
                     className="ghost-button"
                     disabled={
-                      transactions.data.pagination.page >= transactions.data.pagination.totalPages
+                      transactionsData.pagination.page >=
+                      transactionsData.pagination.totalPages
                     }
-                    onClick={() => patchFilters({ page: filters.page + 1 }, { preservePage: true })}
+                    onClick={() =>
+                      patchFilters(
+                        { page: filters.page + 1 },
+                        { preservePage: true },
+                      )
+                    }
                   >
                     Proxima
                   </button>
