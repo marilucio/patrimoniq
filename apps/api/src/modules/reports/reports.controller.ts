@@ -11,4 +11,9 @@ export class ReportsController {
   list(@CurrentAuth() auth: AuthenticatedRequestContext) {
     return this.reportsService.list(auth);
   }
+
+  @Get("balance-timeline")
+  balanceTimeline(@CurrentAuth() auth: AuthenticatedRequestContext) {
+    return this.reportsService.balanceTimeline(auth);
+  }
 }

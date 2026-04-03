@@ -7,7 +7,8 @@ import {
   isOutflow,
   monthLabel,
   startOfMonth,
-  toNumber
+  toNumber,
+  signedAmount,
 } from "../../common/finance.utils";
 import { NetWorthSnapshotsService } from "../../common/net-worth-snapshots.service";
 import { PrismaService } from "../../common/prisma.service";
@@ -16,7 +17,7 @@ import { PrismaService } from "../../common/prisma.service";
 export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly netWorthSnapshots: NetWorthSnapshotsService
+    private readonly netWorthSnapshots: NetWorthSnapshotsService,
   ) {}
 
   async list(auth: AuthenticatedRequestContext) {
@@ -31,28 +32,28 @@ export class ReportsService {
           userId: auth.userId,
           postedAt: {
             gte: rangeStart,
-            lte: monthEnd
+            lte: monthEnd,
           },
           status: {
-            not: "CANCELED"
-          }
+            not: "CANCELED",
+          },
         },
         include: {
-          category: true
-        }
+          category: true,
+        },
       }),
       this.prisma.liability.findMany({
-        where: { userId: auth.userId, isArchived: false }
+        where: { userId: auth.userId, isArchived: false },
       }),
       this.prisma.scoreHistory.findFirst({
         where: { userId: auth.userId },
-        orderBy: { snapshotDate: "desc" }
+        orderBy: { snapshotDate: "desc" },
       }),
-      this.netWorthSnapshots.calculateTotals(auth.userId)
+      this.netWorthSnapshots.calculateTotals(auth.userId),
     ]);
 
     const currentMonthTransactions = transactions.filter(
-      (item) => item.postedAt >= monthStart && item.postedAt <= monthEnd
+      (item) => item.postedAt >= monthStart && item.postedAt <= monthEnd,
     );
     const income = currentMonthTransactions
       .filter((item) => item.status === "CLEARED" && isInflow(item.type))
@@ -66,7 +67,10 @@ export class ReportsService {
       .filter((item) => item.status === "CLEARED" && isOutflow(item.type))
       .forEach((item) => {
         const label = item.category?.name ?? "Sem categoria";
-        categorySpendMap.set(label, (categorySpendMap.get(label) ?? 0) + toNumber(item.amount));
+        categorySpendMap.set(
+          label,
+          (categorySpendMap.get(label) ?? 0) + toNumber(item.amount),
+        );
       });
 
     const categorySpend = [...categorySpendMap.entries()]
@@ -74,14 +78,15 @@ export class ReportsService {
       .map(([category, amount]) => ({
         category,
         amount,
-        share: expenses > 0 ? Number(((amount / expenses) * 100).toFixed(1)) : 0
+        share:
+          expenses > 0 ? Number(((amount / expenses) * 100).toFixed(1)) : 0,
       }));
 
     const monthlyFlow = Array.from({ length: 6 }).map((_, index) => {
       const start = addMonths(monthStart, index - 5);
       const end = endOfMonth(start);
       const monthTransactions = transactions.filter(
-        (item) => item.postedAt >= start && item.postedAt <= end
+        (item) => item.postedAt >= start && item.postedAt <= end,
       );
 
       return {
@@ -91,7 +96,7 @@ export class ReportsService {
           .reduce((sum, item) => sum + toNumber(item.amount), 0),
         expenses: monthTransactions
           .filter((item) => item.status === "CLEARED" && isOutflow(item.type))
-          .reduce((sum, item) => sum + toNumber(item.amount), 0)
+          .reduce((sum, item) => sum + toNumber(item.amount), 0),
       };
     });
 
@@ -101,20 +106,23 @@ export class ReportsService {
           id: "saldo-mensal",
           title: "Saldo do mes",
           summary: "Receitas menos despesas compensadas no periodo atual.",
-          metric: income - expenses
+          metric: income - expenses,
         },
         {
           id: "dividas",
           title: "Dividas em aberto",
           summary: "Passivos ativos registrados no seu patrimonio.",
-          metric: liabilities.reduce((sum, item) => sum + toNumber(item.currentBalance), 0)
+          metric: liabilities.reduce(
+            (sum, item) => sum + toNumber(item.currentBalance),
+            0,
+          ),
         },
         {
           id: "patrimonio",
           title: "Patrimonio liquido",
           summary: "Ativos menos passivos com base no cadastro atual.",
-          metric: totals.netWorth
-        }
+          metric: totals.netWorth,
+        },
       ],
       categorySpend,
       monthlyFlow,
@@ -126,9 +134,78 @@ export class ReportsService {
             discipline: score.disciplineScore,
             protection: score.protectionScore,
             growth: score.growthScore,
-            debt: score.debtScore
+            debt: score.debtScore,
           }
-        : null
+        : null,
+    };
+  }
+
+  async balanceTimeline(auth: AuthenticatedRequestContext) {
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+    const rangeStart = addMonths(monthStart, -5);
+
+    const [accounts, transactionsUpToNow] = await Promise.all([
+      this.prisma.account.findMany({
+        where: {
+          userId: auth.userId,
+          isArchived: false,
+        },
+        select: {
+          openingBalance: true,
+        },
+      }),
+      this.prisma.transaction.findMany({
+        where: {
+          userId: auth.userId,
+          postedAt: {
+            lte: monthEnd,
+          },
+          status: "CLEARED",
+        },
+        select: {
+          postedAt: true,
+          type: true,
+          amount: true,
+        },
+      }),
+    ]);
+
+    const openingBalanceTotal = accounts.reduce(
+      (sum, a) => sum + toNumber(a.openingBalance),
+      0,
+    );
+
+    const baseBalance = transactionsUpToNow
+      .filter((t) => t.postedAt < rangeStart)
+      .reduce((sum, t) => sum + signedAmount(t.type, t.amount), 0);
+
+    const monthlyFlow = Array.from({ length: 6 }).map((_, index) => {
+      const start = addMonths(monthStart, index - 5);
+      const end = endOfMonth(start);
+      const monthSum = transactionsUpToNow
+        .filter((t) => t.postedAt >= start && t.postedAt <= end)
+        .reduce((sum, t) => sum + signedAmount(t.type, t.amount), 0);
+      return {
+        month: monthLabel(start),
+        windowStart: start,
+        windowEnd: end,
+        delta: monthSum,
+      };
+    });
+
+    const timeline: Array<{ month: string; balance: number }> = [];
+    let running = openingBalanceTotal + baseBalance;
+    for (const item of monthlyFlow) {
+      running += item.delta;
+      timeline.push({ month: item.month, balance: running });
+    }
+
+    return {
+      openingBalanceTotal,
+      currentBalance: running,
+      timeline,
     };
   }
 }

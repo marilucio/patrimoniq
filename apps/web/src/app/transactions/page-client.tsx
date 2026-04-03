@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { formatCurrency } from "@patrimoniq/domain";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   EmptyModuleState,
   ErrorState,
@@ -143,6 +143,9 @@ export function TransactionsClientPage() {
     tone: "success" | "error";
     message: string;
   } | null>(null);
+  const [quickAmount, setQuickAmount] = useState("");
+  const [quickDescription, setQuickDescription] = useState("");
+  const [quickAccountId, setQuickAccountId] = useState("");
   const [isPending, startTransition] = useTransition();
   const { showToast } = useToast();
 
@@ -314,6 +317,48 @@ export function TransactionsClientPage() {
   const transactionsData = normalizeTransactionsData(transactions.data);
   const accountItems = accounts.data.items ?? [];
   const categoryItems = categories.data.items ?? [];
+  useEffect(() => {
+    if (!quickAccountId && accountItems.length > 0) {
+      setQuickAccountId(accountItems[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountItems.length]);
+
+  function handleQuickAdd(kind: "INCOME" | "EXPENSE") {
+    const amountResult = parsePositiveAmount(quickAmount, "Valor");
+    if (amountResult.error) {
+      showToast({ tone: "error", message: amountResult.error });
+      return;
+    }
+    if (!quickAccountId) {
+      showToast({ tone: "error", message: "Selecione uma conta" });
+      return;
+    }
+    startTransition(() => {
+      void apiRequest("/transactions", {
+        method: "POST",
+        body: {
+          description:
+            quickDescription || (kind === "INCOME" ? "Recebido" : "Pago"),
+          amount: amountResult.value,
+          postedAt: today(),
+          type: kind,
+          status: "CLEARED",
+          accountId: quickAccountId,
+        },
+      })
+        .then(async () => {
+          setQuickAmount("");
+          setQuickDescription("");
+          await transactions.reload();
+          notifyDataChanged();
+          showToast({ tone: "success", message: "Lancamento criado." });
+        })
+        .catch((submitError) => {
+          showToast({ tone: "error", message: readApiError(submitError) });
+        });
+    });
+  }
 
   if (
     transactionsData.pagination.totalItems === 0 &&
@@ -394,6 +439,57 @@ export function TransactionsClientPage() {
           </div>
         }
       />
+
+      <SectionCard
+        title="Lancamento rapido"
+        subtitle="Digite o valor e toque em Receber ou Pagar"
+        className="subtle-card"
+      >
+        {accountItems.length === 0 ? (
+          <FeedbackBanner
+            tone="info"
+            message="Cadastre uma conta em Configuracoes antes de registrar movimentacoes."
+          />
+        ) : null}
+        <div className="quick-entry">
+          <CurrencyField
+            label="Valor"
+            value={quickAmount}
+            onValueChange={setQuickAmount}
+            required
+          />
+          <InputField
+            label="Descricao (opcional)"
+            value={quickDescription}
+            onChange={(e) => setQuickDescription(e.target.value)}
+            placeholder="Ex.: Salario, Mercado, Pix"
+          />
+          <SelectField
+            label="Conta"
+            value={quickAccountId}
+            onChange={(e) => setQuickAccountId(e.target.value)}
+            options={accountItems.map((a) => ({ value: a.id, label: a.name }))}
+          />
+          <div className="list-actions">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => handleQuickAdd("INCOME")}
+              aria-label="Receber"
+            >
+              Receber
+            </button>
+            <button
+              type="button"
+              className="danger-button"
+              onClick={() => handleQuickAdd("EXPENSE")}
+              aria-label="Pagar"
+            >
+              Pagar
+            </button>
+          </div>
+        </div>
+      </SectionCard>
 
       <section className="stats-grid compact">
         <StatCard

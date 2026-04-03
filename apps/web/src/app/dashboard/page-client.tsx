@@ -10,6 +10,7 @@ import {
   ProgressBar,
   SectionCard,
   StatCard,
+  MiniBars,
 } from "../../components/ui";
 import { useApiResource } from "../../hooks/use-api-resource";
 import {
@@ -17,6 +18,7 @@ import {
   type AlertItem,
   type AlertsResponse,
   type DashboardResponse,
+  type BalanceTimelineResponse,
 } from "../../lib/api";
 
 const severityTone: Record<string, string> = {
@@ -557,6 +559,9 @@ export function DashboardClientPage() {
     "/dashboard/overview",
   );
   const alerts = useApiResource<AlertsResponse>("/alerts");
+  const balanceTimeline = useApiResource<BalanceTimelineResponse>(
+    "/reports/balance-timeline",
+  );
   const [, startTransition] = useTransition();
 
   // Trigger alert evaluation on dashboard load
@@ -718,10 +723,50 @@ export function DashboardClientPage() {
 
       <section className="dashboard-hero">
         <div className="dashboard-balance">
+          <span className="eyebrow">Saldo disponivel</span>
+          <strong>
+            {formatCurrency(balanceTimeline.data?.currentBalance ?? 0)}
+          </strong>
+          <p>Considera o saldo inicial e todas as movimentacoes compensadas.</p>
+          <div className="trend-summary">
+            <MiniBars
+              values={(balanceTimeline.data?.timeline ?? []).map(
+                (p) => p.balance,
+              )}
+            />
+            <div className="trend-legend">
+              {(balanceTimeline.data?.timeline ?? []).map((item) => (
+                <div key={item.month} className="trend-row">
+                  <strong>{item.month}</strong>
+                  <span>{formatCurrency(item.balance)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="dashboard-side-panel">
+          <div className="focus-inline">
+            <span>Contas a vencer</span>
+            <strong>{formatCurrency(data.summary.upcomingBillsAmount)}</strong>
+          </div>
+          <div className="focus-inline">
+            <span>Patrimonio liquido</span>
+            <strong>{formatCurrency(data.summary.netWorth)}</strong>
+          </div>
+          <p>
+            {upcomingBills.length > 0
+              ? `${upcomingBills.length} compromisso(s) pendente(s) neste mes.`
+              : "Nenhum compromisso pendente neste mes."}
+          </p>
+        </div>
+      </section>
+
+      <section className="dashboard-hero">
+        <div className="dashboard-balance">
           <span className="eyebrow">Saldo do mes</span>
           <strong>{formatCurrency(data.summary.balanceMonth)}</strong>
           <p>Resultado acumulado do mes ate o momento.</p>
-
           <div className="metric-strip">
             <article className="metric-tile positive">
               <span>Entrou</span>
@@ -742,22 +787,6 @@ export function DashboardClientPage() {
               <strong>{formatCurrency(data.summary.leftover)}</strong>
             </article>
           </div>
-        </div>
-
-        <div className="dashboard-side-panel">
-          <div className="focus-inline">
-            <span>Contas a vencer</span>
-            <strong>{formatCurrency(data.summary.upcomingBillsAmount)}</strong>
-          </div>
-          <div className="focus-inline">
-            <span>Patrimonio liquido</span>
-            <strong>{formatCurrency(data.summary.netWorth)}</strong>
-          </div>
-          <p>
-            {upcomingBills.length > 0
-              ? `${upcomingBills.length} compromisso(s) pendente(s) neste mes.`
-              : "Nenhum compromisso pendente neste mes."}
-          </p>
         </div>
       </section>
 

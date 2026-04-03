@@ -13,7 +13,10 @@ function readApiBaseUrl() {
     return publicApiPath;
   }
 
-  const appUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl =
+    process.env.APP_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    "http://localhost:3000";
   return `${appUrl.replace(/\/$/, "")}${publicApiPath}`;
 }
 
@@ -22,14 +25,14 @@ const AUTH_FLOW_PATHS = new Set([
   "/auth/login",
   "/auth/register",
   "/auth/password/forgot",
-  "/auth/password/reset"
+  "/auth/password/reset",
 ]);
 
 export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
-    public readonly payload?: unknown
+    public readonly payload?: unknown,
   ) {
     super(message);
     this.name = "ApiError";
@@ -289,6 +292,15 @@ export interface ReportsResponse {
     growth: number;
     debt: number;
   } | null;
+}
+
+export interface BalanceTimelineResponse {
+  openingBalanceTotal: number;
+  currentBalance: number;
+  timeline: Array<{
+    month: string;
+    balance: number;
+  }>;
 }
 
 export interface SettingsResponse {
@@ -605,7 +617,9 @@ export interface FeedbackResponse {
   }>;
 }
 
-function isSerializableBody(value: unknown): value is Record<string, unknown> | unknown[] {
+function isSerializableBody(
+  value: unknown,
+): value is Record<string, unknown> | unknown[] {
   return (
     Boolean(value) &&
     typeof value === "object" &&
@@ -618,7 +632,9 @@ function isSerializableBody(value: unknown): value is Record<string, unknown> | 
 
 export async function apiRequest<T>(
   path: string,
-  init?: Omit<RequestInit, "body"> & { body?: RequestInit["body"] | Record<string, unknown> | unknown[] }
+  init?: Omit<RequestInit, "body"> & {
+    body?: RequestInit["body"] | Record<string, unknown> | unknown[];
+  },
 ): Promise<T> {
   const headers = new Headers(init?.headers);
   let body = init?.body;
@@ -633,7 +649,7 @@ export async function apiRequest<T>(
     body,
     headers,
     credentials: "include",
-    cache: "no-store"
+    cache: "no-store",
   });
 
   const text = await response.text();
