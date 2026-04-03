@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { FeedbackBanner, InputField } from "../../components/form-controls";
-import { apiRequest, readApiError, type AuthSessionResponse } from "../../lib/api";
+import {
+  apiRequest,
+  readApiError,
+  type AuthSessionResponse,
+} from "../../lib/api";
+import { PwaInstallButton } from "../../components/pwa-install-button";
 
 export function LoginClientPage() {
   const searchParams = useSearchParams();
@@ -29,8 +34,8 @@ export function LoginClientPage() {
         method: "POST",
         body: {
           email,
-          password
-        }
+          password,
+        },
       })
         .then(() => {
           window.location.assign("/dashboard");
@@ -46,12 +51,14 @@ export function LoginClientPage() {
       <div className="auth-card-header">
         <span className="eyebrow">Acesso seguro</span>
         <h1>Entrar na sua conta</h1>
-        <p>
-          Acesse seu painel financeiro com sessao protegida.
-        </p>
+        <p>Acesse seu painel financeiro com sessao protegida.</p>
       </div>
 
-      <form className="editor-form" onSubmit={handleSubmit} aria-label="Formulario de login">
+      <form
+        className="editor-form"
+        onSubmit={handleSubmit}
+        aria-label="Formulario de login"
+      >
         <InputField
           label="E-mail"
           type="email"
@@ -71,7 +78,9 @@ export function LoginClientPage() {
           aria-label="Senha"
         />
 
-        {infoMessage ? <FeedbackBanner tone="info" message={infoMessage} /> : null}
+        {infoMessage ? (
+          <FeedbackBanner tone="info" message={infoMessage} />
+        ) : null}
         {error ? <FeedbackBanner tone="error" message={error} /> : null}
 
         <div className="form-actions">
@@ -90,8 +99,13 @@ export function LoginClientPage() {
       <div className="auth-card-footer">
         <p>
           Ainda nao tem conta?{" "}
-          <Link href="/register" className="inline-link">Criar agora</Link>
+          <Link href="/register" className="inline-link">
+            Criar agora
+          </Link>
         </p>
+        <div style={{ marginTop: 12 }}>
+          <PwaInstallButton />
+        </div>
       </div>
     </section>
   );

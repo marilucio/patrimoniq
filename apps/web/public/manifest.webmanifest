@@ -1,0 +1,29 @@
+{
+  "name": "Patrimoniq",
+  "short_name": "Patrimoniq",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b132b",
+  "theme_color": "#0b132b",
+  "description": "Controle financeiro simples e poderoso.",
+  "icons": [
+    {
+      "src": "/icons/logo_app.jpg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/logo_app.jpg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48 96x96 144x144",
+      "type": "image/x-icon"
+    }
+  ]
+}

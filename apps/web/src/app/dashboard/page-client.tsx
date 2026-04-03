@@ -20,6 +20,7 @@ import {
   type DashboardResponse,
   type BalanceTimelineResponse,
 } from "../../lib/api";
+import { PwaInstallButton } from "../../components/pwa-install-button";
 
 const severityTone: Record<string, string> = {
   CRITICAL: "critical",
@@ -694,7 +695,10 @@ export function DashboardClientPage() {
         title={`${data.userName}, este e o essencial do seu mes`}
         description="Saldo, compromissos e progresso das suas metas em um so lugar."
         actions={
-          <div className="hero-chip">Atualizado em {data.referenceMonth}</div>
+          <div className="hero-actions">
+            <div className="hero-chip">Atualizado em {data.referenceMonth}</div>
+            <PwaInstallButton />
+          </div>
         }
       />
 
